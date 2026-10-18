@@ -1,0 +1,11 @@
+node_modules
+dist
+dev-dist
+.env
+.env.local
+.env.*.local
+.DS_Store
+supabase/.temp
+_to_delete
+dist-demo
+supabase/.secrets.env

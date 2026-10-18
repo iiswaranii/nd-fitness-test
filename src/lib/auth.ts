@@ -1,0 +1,241 @@
+import { supabase } from './supabase';
+import { DEMO_AUTH, DEMO_OTP, goToRoute } from './config';
+import type { Identifier } from './validation';
+
+export type AppUser = {
+  id: string;
+  email: string | null;
+  phone: string | null;
+  provider: 'google' | 'email' | 'phone';
+  name: string | null;
+};
+
+export type Profile = {
+  id: string;
+  full_name: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  email: string | null;
+  phone: string | null;
+  password_set: boolean;
+  /** Set by the member's first Strava activity link: only that athlete's activities are accepted after. */
+  strava_connected: boolean;
+  strava_athlete_name: string | null;
+  role: 'member' | 'admin';
+  notify_new_challenges: boolean;
+};
+
+export interface AuthApi {
+  readonly demo: boolean;
+  currentUser(): Promise<AppUser | null>;
+  onChange(cb: (u: AppUser | null) => void): () => void;
+  signInWithGoogle(): Promise<void>;
+  /** One code for both new and returning members: the account is created on first sign-in. */
+  sendOtp(id: Identifier): Promise<void>;
+  verifyOtp(id: Identifier, code: string): Promise<void>;
+  signOut(): Promise<void>;
+  getProfile(uid: string): Promise<Profile | null>;
+  updateProfile(uid: string, patch: Partial<Pick<Profile, 'full_name' | 'city' | 'state' | 'country' | 'notify_new_challenges'>>): Promise<void>;
+}
+
+/* ------------------------------------------------------------------ */
+/* Supabase implementation                                             */
+/* ------------------------------------------------------------------ */
+
+function toAppUser(u: {
+  id: string;
+  email?: string | null;
+  phone?: string | null;
+  app_metadata?: Record<string, unknown>;
+  user_metadata?: Record<string, unknown>;
+} | null | undefined): AppUser | null {
+  if (!u) return null;
+  const prov = String(u.app_metadata?.provider ?? (u.email ? 'email' : 'phone'));
+  const meta = u.user_metadata ?? {};
+  return {
+    id: u.id,
+    email: u.email || null,
+    phone: u.phone ? (u.phone.startsWith('+') ? u.phone : '+' + u.phone) : null,
+    provider: prov === 'google' ? 'google' : prov === 'phone' ? 'phone' : 'email',
+    name: (meta.full_name as string) || (meta.name as string) || null,
+  };
+}
+
+function sb() {
+  if (!supabase) throw new Error('Supabase is not configured.');
+  return supabase;
+}
+
+const supabaseAuth: AuthApi = {
+  demo: false,
+  async currentUser() {
+    const { data } = await sb().auth.getSession();
+    return toAppUser(data.session?.user);
+  },
+  onChange(cb) {
+    const { data } = sb().auth.onAuthStateChange((_e, session) => cb(toAppUser(session?.user)));
+    return () => data.subscription.unsubscribe();
+  },
+  async signInWithGoogle() {
+    const { error } = await sb().auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${location.origin}${import.meta.env.BASE_URL}auth/callback`, queryParams: { prompt: 'select_account' } },
+    });
+    if (error) throw error;
+  },
+  async sendOtp(id) {
+    const { error } =
+      id.kind === 'email'
+        ? await sb().auth.signInWithOtp({ email: id.email, options: { shouldCreateUser: true } })
+        : await sb().auth.signInWithOtp({ phone: id.phone, options: { shouldCreateUser: true, channel: 'sms' } });
+    if (error) throw error;
+  },
+  async verifyOtp(id, code) {
+    const { error } =
+      id.kind === 'email'
+        ? await sb().auth.verifyOtp({ email: id.email, token: code, type: 'email' })
+        : await sb().auth.verifyOtp({ phone: id.phone, token: code, type: 'sms' });
+    if (error) throw error;
+  },
+  async signOut() {
+    await sb().auth.signOut();
+  },
+  async getProfile(uid) {
+    const { data, error } = await sb().from('profiles').select('*').eq('id', uid).maybeSingle();
+    if (error) throw error;
+    return (data as Profile) ?? null;
+  },
+  async updateProfile(uid, patch) {
+    const { error } = await sb().from('profiles').update(patch).eq('id', uid);
+    if (error) throw error;
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* Demo implementation — everything stays in this browser.            */
+/* ------------------------------------------------------------------ */
+
+type DemoAccount = { user: AppUser; password: string | null; profile: Profile };
+const DK = 'ndf-auth-v2';
+// Fresh start (18 Oct 2026): forget accounts from the sample-data version.
+try { ['ndf-demo-auth-v1', 'ndf-demo-data-v3', 'ndf-flow'].forEach((k) => localStorage.removeItem(k)); } catch { /* ignore */ }
+type DemoDB = { accounts: Record<string, DemoAccount>; session: string | null; pending: { key: string } | null };
+
+function load(): DemoDB {
+  try {
+    const v = JSON.parse(localStorage.getItem(DK) || 'null');
+    if (v && v.accounts) return v;
+  } catch { /* storage unavailable */ }
+  return { accounts: {}, session: null, pending: null };
+}
+function save(db: DemoDB) {
+  try { localStorage.setItem(DK, JSON.stringify(db)); } catch { /* ignore */ }
+}
+const keyOf = (id: Identifier) => (id.kind === 'email' ? 'e:' + id.email : 'p:' + id.phone);
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const listeners = new Set<(u: AppUser | null) => void>();
+function emit(db: DemoDB) {
+  const u = db.session ? db.accounts[db.session]?.user ?? null : null;
+  listeners.forEach((cb) => cb(u));
+}
+/** The very first account is the owner (admin), so challenges can be created. Everyone after is a member. */
+function addAccount(db: DemoDB, key: string, acc: DemoAccount) {
+  if (!Object.values(db.accounts).some((a) => a.profile.role === 'admin')) acc.profile.role = 'admin';
+  db.accounts[key] = acc;
+}
+function newAccount(id: Identifier | null, google?: boolean): DemoAccount {
+  const uid = 'demo-' + Math.random().toString(36).slice(2, 10);
+  const user: AppUser = {
+    id: uid,
+    email: google ? 'you@gmail.com' : id?.kind === 'email' ? id.email : null,
+    phone: id?.kind === 'phone' ? id.phone : null,
+    provider: google ? 'google' : id?.kind === 'phone' ? 'phone' : 'email',
+    name: google ? 'Google User' : null,
+  };
+  return {
+    user,
+    password: null,
+    profile: {
+      id: uid, full_name: user.name, city: null, state: null, country: null, email: user.email, phone: user.phone,
+      password_set: false, strava_connected: false, strava_athlete_name: null, role: 'member', notify_new_challenges: true,
+    },
+  };
+}
+
+const demoAuth: AuthApi = {
+  demo: true,
+  async currentUser() {
+    const db = load();
+    return db.session ? db.accounts[db.session]?.user ?? null : null;
+  },
+  onChange(cb) {
+    listeners.add(cb);
+    return () => listeners.delete(cb);
+  },
+  async signInWithGoogle() {
+    await wait(700);
+    const db = load();
+    const key = 'g:you@gmail.com';
+    if (!db.accounts[key]) addAccount(db, key, newAccount(null, true));
+    db.session = key;
+    save(db);
+    goToRoute('/auth/callback');
+  },
+  async sendOtp(id) {
+    await wait(650);
+    const db = load();
+    db.pending = { key: keyOf(id) };
+    save(db);
+  },
+  async verifyOtp(id, code) {
+    await wait(600);
+    if (code !== DEMO_OTP) throw new Error('Token has expired or is invalid');
+    const db = load();
+    const key = keyOf(id);
+    if (!db.accounts[key]) addAccount(db, key, newAccount(id));
+    db.session = key;
+    db.pending = null;
+    save(db);
+    emit(db);
+  },
+  async signOut() {
+    const db = load();
+    db.session = null;
+    save(db);
+    emit(db);
+  },
+  async getProfile(uid) {
+    const db = load();
+    return Object.values(db.accounts).find((a) => a.user.id === uid)?.profile ?? null;
+  },
+  async updateProfile(uid, patch) {
+    await wait(300);
+    const db = load();
+    const acc = Object.values(db.accounts).find((a) => a.user.id === uid);
+    if (acc) Object.assign(acc.profile, patch);
+    save(db);
+  },
+};
+
+export const auth: AuthApi = DEMO_AUTH ? demoAuth : supabaseAuth;
+
+/** Demo only: the first Strava link ties the demo member to an athlete name. */
+export function demoLinkStrava(athleteName: string): void {
+  const db = load();
+  const acc = db.session ? db.accounts[db.session] : null;
+  if (!acc) return;
+  acc.profile.strava_connected = true;
+  acc.profile.strava_athlete_name = athleteName;
+  save(db);
+}
+
+/** Test mode: every account on this phone, for the admin's member list. */
+export function demoAllProfiles(): Profile[] {
+  return Object.values(load().accounts).map((a) => a.profile);
+}
+
+/** Test mode: erase every account and sign out. */
+export function demoEraseAccounts(): void {
+  try { localStorage.removeItem(DK); } catch { /* ignore */ }
+}

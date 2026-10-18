@@ -1,0 +1,6 @@
+# Supabase CLI settings used by scripts/go-live.sh.
+project_id = "nd-fitness-app"
+
+# Called every 15 minutes by pg_cron with CRON_SECRET, not by a signed-in member.
+[functions.send-reminders]
+verify_jwt = false
