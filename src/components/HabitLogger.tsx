@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { daysLeft, goalText, progress } from '../lib/progress';
+import { fmtRange } from '../lib/dates';
 import { Sheet } from './Sheet';
 import { Button, ErrorText } from './Form';
 import { Icon } from './Icon';
@@ -26,6 +29,7 @@ export function HabitLogger({ c, open, onClose }: { c: Challenge | null; open: b
   return (
     <Sheet open={open} onClose={onClose} label={`Log ${c.title}`}>
       <LoggerBody key={c.id} c={c} onClose={onClose} />
+      <ChallengeInfo c={c} onClose={onClose} />
     </Sheet>
   );
 }
@@ -249,5 +253,29 @@ function TimeLogger({ h, target, value, commit, busy }: { h: Habit; target: numb
       </Button>
       {value !== null ? <button className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => commit(null, [], 'Entry cleared')}>Clear this day</button> : null}
     </div>
+  );
+}
+
+/** Scroll down in the logger: what this challenge is, its dates and your progress so far. */
+function ChallengeInfo({ c, onClose }: { c: Challenge; onClose: () => void }) {
+  const nav = useNavigate();
+  const { activities, logs } = useStore();
+  const p = progress(c, activities, logs);
+  const left = daysLeft(c);
+  return (
+    <section className="stack tight" style={{ borderTop: '1px solid var(--line)', paddingTop: 16 }}>
+      <p className="eyebrow">About this challenge</p>
+      <h3 className="h2">{c.title}</h3>
+      {c.description ? <p className="small" style={{ color: 'var(--ink-2)' }}>{c.description}</p> : null}
+      <div className="kv">
+        <div><div className="k">Goal</div><div className="v">{goalText(c)}</div></div>
+        <div><div className="k">Dates</div><div className="v">{fmtRange(c.start_date, c.end_date)}</div></div>
+        <div><div className="k">Your progress</div><div className="v">{Math.round(p.pct)}%{p.done ? ' · done' : ''}</div></div>
+        <div><div className="k">Days left</div><div className="v">{left > 0 ? left : 'Finished'}</div></div>
+      </div>
+      <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => { onClose(); nav(`/c/${c.id}`); }}>
+        See full challenge and leaderboard
+      </button>
+    </section>
   );
 }

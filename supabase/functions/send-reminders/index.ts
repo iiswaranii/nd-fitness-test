@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
       sent += await sendAll(db, mySubs, () => ({
         title: c.category === 'habit' ? `Time to log: ${c.title}` : `Time to move: ${c.title}`,
         body: c.category === 'habit' ? 'Tap to log today. It takes a second.' : 'A short walk today keeps your streak going. You’ve got this!',
-        url: `/c/${c.id}`,
+        url: `c/${c.id}`,
         tag: `rem-${c.id}`,
       }));
       await db.from('challenge_members').update({ last_reminded: date }).eq('challenge_id', c.id).eq('user_id', r.user_id);

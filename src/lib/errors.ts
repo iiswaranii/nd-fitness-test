@@ -22,6 +22,6 @@ export function friendlyError(err: unknown): string {
     return 'Choose a password you haven’t used before.';
   if (m.includes('password')) return raw;
   if (m.includes('popup') || m.includes('provider is not enabled'))
-    return 'Google sign-in isn’t set up yet. Please use email for now.';
+    return 'Google sign-in is coming soon. Please use your email for now.';
   return raw || 'Something went wrong. Please try again.';
 }

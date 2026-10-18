@@ -18,7 +18,7 @@ export default function Challenges() {
   const tab = (params.get('tab') as Tab) || 'joined';
   const [kind, setKind] = useState<Kind>('all');
   const [joinC, setJoinC] = useState<Challenge | null>(null);
-  const { challenges, activities, logs, reload, loading } = useStore();
+  const { challenges, activities, logs, reload, loading, newIds } = useStore();
 
   const byKind = (c: Challenge) => kind === 'all' || c.category === kind;
   const live = (c: Challenge) => status(c) === 'active' || status(c) === 'upcoming';
@@ -45,6 +45,7 @@ export default function Challenges() {
             {([['joined', 'Joined'], ['open', 'Open to join'], ['finished', 'Finished']] as const).map(([k, l]) => (
               <button key={k} role="tab" aria-selected={tab === k} onClick={() => setParams({ tab: k }, { replace: true })}>
                 {l} <span className="muted" style={{ fontSize: 12 }}>{groups[k].length}</span>
+                {k === 'open' && groups.open.some((c) => newIds.has(c.id)) ? <span className="new-badge">New</span> : null}
               </button>
             ))}
           </div>

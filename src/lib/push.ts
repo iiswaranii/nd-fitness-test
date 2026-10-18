@@ -1,7 +1,18 @@
 import { data } from './data';
 import { DEMO_AUTH, HASH_ROUTER } from './config';
 
+// Demo builds can pin a key; the real app asks the server for its push key (created server-side on first use).
 const VAPID_PUBLIC = import.meta.env.VITE_VAPID_PUBLIC_KEY ?? '';
+const KEY_CACHE = 'ndf-push-key';
+let keyPromise: Promise<string> | null = null;
+function pushKey(): Promise<string> {
+  if (VAPID_PUBLIC || DEMO_AUTH) return Promise.resolve(VAPID_PUBLIC);
+  try { const c = localStorage.getItem(KEY_CACHE); if (c) return Promise.resolve(c); } catch { /* ignore */ }
+  keyPromise ??= data.pushPublicKey()
+    .then((k) => { try { localStorage.setItem(KEY_CACHE, k); } catch { /* ignore */ } return k; })
+    .catch(() => { keyPromise = null; return ''; });
+  return keyPromise;
+}
 
 export type PushState =
   | 'on'            // permission granted and this device is subscribed
@@ -32,11 +43,11 @@ export async function pushState(): Promise<PushState> {
   if (DEMO_AUTH && (HASH_ROUTER || !VAPID_PUBLIC)) {
     try { return localStorage.getItem(DEMO_KEY) === 'on' ? 'on' : 'off'; } catch { return 'off'; }
   }
-  if (!VAPID_PUBLIC) return 'soon';
   if (isIOS() && !isStandalone()) return 'install-first';
   if (!canPush()) return 'unsupported';
   if (Notification.permission === 'denied') return 'blocked';
-  return Notification.permission === 'granted' && (await currentSub()) ? 'on' : 'off';
+  if (Notification.permission === 'granted' && (await currentSub())) return 'on';
+  return (await pushKey()) ? 'off' : 'soon';
 }
 
 /** Ask permission, subscribe this device and save it. Must be called from a tap. */
@@ -47,11 +58,12 @@ export async function enablePush(): Promise<PushState> {
   }
   const s = await pushState();
   if (s === 'install-first' || s === 'unsupported' || s === 'blocked') return s;
+  if (!(await pushKey())) return 'soon';
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') return perm === 'denied' ? 'blocked' : 'off';
   const reg = await navigator.serviceWorker.ready;
   const sub = (await reg.pushManager.getSubscription())
-    ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(VAPID_PUBLIC) as BufferSource }));
+    ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(await pushKey()) as BufferSource }));
   await data.savePushSubscription(sub.toJSON(), Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata');
   return 'on';
 }

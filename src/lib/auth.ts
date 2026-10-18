@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { DEMO_AUTH, DEMO_OTP, goToRoute } from './config';
+import { DEMO_AUTH, DEMO_OTP, SUPABASE_ANON_KEY, SUPABASE_URL, goToRoute } from './config';
 import type { Identifier } from './validation';
 
 export type AppUser = {
@@ -78,6 +78,9 @@ const supabaseAuth: AuthApi = {
     return () => data.subscription.unsubscribe();
   },
   async signInWithGoogle() {
+    // Check first: if Google isn't switched on in Supabase, the redirect would land on a raw JSON error page.
+    const st = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_ANON_KEY } }).then((r) => r.json()).catch(() => null);
+    if (st && !st.external?.google) throw new Error('provider is not enabled');
     const { error } = await sb().auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: `${location.origin}${import.meta.env.BASE_URL}auth/callback`, queryParams: { prompt: 'select_account' } },

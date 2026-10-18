@@ -8,7 +8,6 @@ import { Rings } from '../components/Ring';
 import { PullToRefresh, RefreshButton } from '../components/PullToRefresh';
 import { AddLinkSheet } from '../components/AddLinkSheet';
 import { HabitLogger } from '../components/HabitLogger';
-import { useToast } from '../components/Toast';
 import { useSession } from '../lib/session';
 import { data } from '../lib/data';
 import { useStore } from '../lib/store';
@@ -16,14 +15,12 @@ import { canJoin, daysLeft, fmtValue, progress, status, unitOf } from '../lib/pr
 import { dayMet, fmtAmount, fmtClock, habitByKey } from '../lib/habits';
 import { lookOf } from '../lib/look';
 import { longDay, relDay, today } from '../lib/dates';
-import { friendlyError } from '../lib/errors';
 import type { Challenge } from '../lib/types';
 
 export default function Today() {
   const nav = useNavigate();
-  const toast = useToast();
   const { user, profile } = useSession();
-  const { challenges, activities, logs, loading, error, reload, saveLog, isAdmin } = useStore();
+  const { challenges, activities, logs, loading, error, reload, isAdmin } = useStore();
   const name = profile?.full_name || user?.name || 'there';
   const [addLink, setAddLink] = useState(false);
   const [logFor, setLogFor] = useState<Challenge | null>(null);
@@ -101,12 +98,10 @@ export default function Today() {
 
           {habits.length ? (
             <section className="sec">
-              <div className="sec-h"><h2 className="h2">Today’s habits</h2><span className="small muted">Tap to log</span></div>
+              <div className="sec-h"><h2 className="h2">Today’s habits</h2><span className="small muted">Tap a habit to log</span></div>
               <div className="list">
                 {habits.map((c) => (
-                  <HabitRow key={c.id} c={c} onOpen={() => setLogFor(c)} onQuick={async (v, entries, msg) => {
-                    try { await saveLog(c.id, today(), v, entries); if (msg) toast(msg); } catch (e) { toast(friendlyError(e)); }
-                  }} logValue={logs.find((l) => l.challenge_id === c.id && l.date === today())} />
+                  <HabitRow key={c.id} c={c} onOpen={() => setLogFor(c)} logValue={logs.find((l) => l.challenge_id === c.id && l.date === today())} />
                 ))}
               </div>
             </section>
@@ -146,11 +141,10 @@ export default function Today() {
   );
 }
 
-function HabitRow({ c, logValue, onOpen, onQuick }: {
+function HabitRow({ c, logValue, onOpen }: {
   c: Challenge;
   logValue?: { value: number; entries: number[] };
   onOpen: () => void;
-  onQuick: (v: number | null, entries: number[], msg?: string) => void;
 }) {
   const h = habitByKey(c.habit_key);
   const look = lookOf(c);
@@ -158,32 +152,21 @@ function HabitRow({ c, logValue, onOpen, onQuick }: {
   const target = c.daily_target ?? h.goal ?? 0;
   const v = logValue?.value ?? null;
   const met = dayMet(h, target, v);
-  const status = v === null ? 'Not logged yet'
+  const status = v === null ? 'Not logged yet · tap to log'
     : h.kind === 'amount' ? `${fmtAmount(v, h.unit)} of ${fmtAmount(target, h.unit)}${h.dir === 'atMost' ? ' limit' : ''}`
     : h.kind === 'time' ? `${fmtClock(v)} · goal ${fmtClock(target)}`
     : v ? 'Done' : 'Not today';
-  const quick = h.kind === 'amount' && h.dir !== 'atMost' && h.presets?.length ? h.presets[Math.min(1, h.presets.length - 1)] : null;
 
+  // One tap target: opening the habit is the only way to log, so nothing is logged by accident.
   return (
-    <div className="hrow" style={{ ['--c' as string]: look.color }}>
-      <button className="sp" onClick={onOpen} aria-label={`Open ${h.name}`} style={{ border: 0 }}><Icon name={look.icon} /></button>
-      <button className="grow" onClick={onOpen} style={{ background: 'none', border: 0, padding: 0, textAlign: 'left', minWidth: 0 }}>
+    <button className="hrow" style={{ ['--c' as string]: look.color, width: '100%', textAlign: 'left' }} onClick={onOpen} aria-label={`${h.name}: ${status}`}>
+      <span className="sp"><Icon name={look.icon} /></span>
+      <span className="grow" style={{ minWidth: 0 }}>
         <span className="t" style={{ display: 'block' }}>{h.name}</span>
         <span className="s" style={{ color: met ? 'var(--good)' : undefined, fontWeight: met ? 700 : undefined }}>{met ? '✓ ' : ''}{status}</span>
-      </button>
-      {h.kind === 'check' ? (
-        <button className="check-ring" aria-pressed={v === 1} aria-label={v === 1 ? `Undo ${h.name}` : `Mark ${h.name} done`}
-          onClick={() => onQuick(v === 1 ? null : 1, [], v === 1 ? undefined : 'Nice work!')}>
-          {v === 1 ? <Icon name="check" /> : null}
-        </button>
-      ) : quick ? (
-        <button className={`qbtn ${met ? 'done' : ''}`} onClick={() => onQuick(+((v ?? 0) + quick).toFixed(2), [...(logValue?.entries ?? []), quick], !met && (v ?? 0) + quick >= target ? 'Daily goal reached' : `+${fmtAmount(quick, h.unit)}`)} aria-label={`Add ${fmtAmount(quick, h.unit)}`}>
-          <Icon name="plus" />{fmtAmount(quick)}
-        </button>
-      ) : (
-        <button className={`qbtn ${met ? 'done' : ''}`} onClick={onOpen}>{v === null ? 'Log' : 'Edit'}</button>
-      )}
-    </div>
+      </span>
+      {met ? <span className="check-ring" aria-hidden="true" data-on="true"><Icon name="check" /></span> : <Icon name="chev" />}
+    </button>
   );
 }
 

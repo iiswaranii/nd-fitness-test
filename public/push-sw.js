@@ -10,13 +10,14 @@ self.addEventListener('push', (event) => {
     badge: self.registration.scope + 'icons/icon-192.png',
     tag: d.tag || undefined,          // same tag replaces an older reminder instead of stacking
     renotify: !!d.tag,
-    data: { url: d.url || '/' },
+    data: { url: d.url || '' },
   }));
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const url = new URL((event.notification.data && event.notification.data.url) || self.registration.scope, self.location.origin).href;
+  // Links are relative to the app's address (it may live in a sub-folder).
+  const url = new URL((event.notification.data && event.notification.data.url) || '', self.registration.scope).href;
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of all) {

@@ -13,6 +13,8 @@ export interface DataApi {
   setReminder(id: string, time: string | null): Promise<void>;
   /** Phone notifications: store or remove this device's push subscription. */
   savePushSubscription(sub: PushSubscriptionJSON, tz: string): Promise<void>;
+  /** The app's public Web Push key (created by the server on first use). */
+  pushPublicKey(): Promise<string>;
   removePushSubscription(endpoint: string): Promise<void>;
   /** Admin: tell members about a newly published challenge. */
   announceChallenge(id: string): Promise<{ sent: number }>;
@@ -124,6 +126,11 @@ const supabaseData: DataApi = {
       user_id: await uid(), endpoint: sub.endpoint, p256dh: sub.keys?.p256dh, auth: sub.keys?.auth, tz,
     }, { onConflict: 'endpoint' });
     if (error) throw error;
+  },
+  async pushPublicKey() {
+    const { data, error } = await sb().functions.invoke('notify-new-challenge', { body: { action: 'keys' } });
+    if (error) throw await fnError(error);
+    return String(data?.publicKey ?? '');
   },
   async removePushSubscription(endpoint) {
     await sb().from('push_subscriptions').delete().eq('endpoint', endpoint);
@@ -300,6 +307,7 @@ const demoData: DataApi = {
     save(s);
   },
   async savePushSubscription() { /* demo: nothing to store */ },
+  async pushPublicKey() { return ''; },
   async removePushSubscription() { /* demo */ },
   async announceChallenge() { await wait(300); return { sent: 0 }; },
   async leave(id) {

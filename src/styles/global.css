@@ -591,3 +591,16 @@ select.input { padding-right: 36px; background-image: linear-gradient(45deg, tra
   .tab .ic { width: 22px; height: 22px; }
   .sheet { max-height: calc(100dvh - var(--sat) - 8px); }
 }
+
+/* habit rows are a single tap target now */
+button.hrow { font: inherit; color: inherit; cursor: pointer; background: none; border: 0; border-top: 1px solid var(--line); }
+button.hrow > .ic { color: var(--muted); flex: none; }
+.check-ring[data-on="true"] { background: var(--c); border-color: var(--c); }
+
+/* "New" on the Open to join tab */
+.new-badge { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 99px; background: var(--bad); color: #FFFFFF; font-size: 10px; font-weight: 800; letter-spacing: .02em; vertical-align: 2px; }
+
+/* iPhone Home Screen app: some iOS versions size the page shorter than the screen, which left a strip
+   under the tab bar. --vgap is that missing height (measured in lib/viewport.ts), so fixed bars reach the bottom. */
+.tabbar, .sheet { bottom: calc(-1 * var(--vgap, 0px)); }
+.page { padding-bottom: calc(var(--sab) + 96px - var(--vgap, 0px)); }
