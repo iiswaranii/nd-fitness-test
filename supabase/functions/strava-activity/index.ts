@@ -1,12 +1,13 @@
 // Adds one walk / run / ride from a pasted Strava link. No Strava connection.
 //  1. Resolve the link to the real activity id (strava.app.link share links redirect to it).
-//  2. Read the public embed page → type, date, distance, time (works when the activity is visible to Everyone).
-//  3. Otherwise read what the public activity page still shows (title, type, date, athlete) and return
-//     { needsStats } so the member types distance and time; the app then calls again with `manual`.
+//  2. Public activity page → title, type, local date/time, athlete, visibility (must be Everyone).
+//     Distance and moving time come from the activity's public GPS track (Strava Labs Flyby).
+//     A pasted Embed code (with token) uses Strava's own embed numbers instead.
+//  3. No GPS track (treadmill, indoor) → { needsStats }; the member types distance and time (`manual`).
 // The member's first link ties their account to that Strava athlete; later links must be by the same athlete,
 // and each activity can be added by only one member.
 import { admin, cors, json, requireUser } from '../_shared/common.ts';
-import { BROWSER_UA, embedUrl, parseActivityPage, parseEmbed, resolveShortLink, type Sport } from '../_shared/strava.ts';
+import { BROWSER_UA, embedUrl, flybyUrl, parseActivityPage, parseEmbed, parsePageFacts, resolveShortLink, sportOf, statsFromFlyby, type Sport } from '../_shared/strava.ts';
 
 const NOT_FOUND = 'We couldn’t open this activity. Check that the link is right and the activity isn’t set to “Only you” in Strava.';
 const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -29,35 +30,59 @@ Deno.serve(async (req) => {
 
     const headers = { 'User-Agent': BROWSER_UA, 'Accept-Language': 'en-GB,en;q=0.9' };
 
-    // ---- 2. full numbers from the embed page ----
     let source: 'link' | 'manual' = 'link';
     let sport: Sport | null = null, sportType: string | null = null, date: string | null = null, time: string | null = null;
     let title: string | null = null, athleteName: string | null = null, athleteId: string | null = null;
-    let distanceM: number | null = null, seconds: number | null = null, elevM: number | null = null;
+    let distanceM: number | null = null, seconds: number | null = null, elapsed: number | null = null, elevM: number | null = null;
+    let startUtc: string | null = null;
 
-    const er = await fetch(embedUrl(id, token), { headers }).catch(() => null);
-    if (er?.status === 429) return json({ error: 'Strava is busy right now. Please try again in a few minutes.' }, 429);
-    const ep = er?.ok ? parseEmbed(await er.text(), today) : null;
+    // ---- 2a. pasted Embed code (has a token) → Strava's own numbers ----
+    const ep = token ? await fetch(embedUrl(id, token), { headers }).then((r) => (r.ok ? r.text() : null)).then((h) => (h ? parseEmbed(h, today) : null)).catch(() => null) : null;
     if (ep && ep.distanceM !== null && ep.date) {
       ({ sport, sportType, date, time, title, athleteName, athleteId, distanceM, seconds, elevM } = ep);
     } else {
-      // ---- 3. public page (title, type, date, athlete) + numbers typed by the member ----
+      // ---- 2b. public activity page: title, type, local date/time, athlete, visibility ----
       const pr = await fetch(`https://www.strava.com/activities/${id}`, { headers }).catch(() => null);
-      const pp = pr?.ok ? parseActivityPage(await pr.text()) : null;
-      if (!pp || (!pp.sport && !pp.sportType)) return json({ error: NOT_FOUND }, 404);
-      ({ sport, sportType, date, title, athleteName, athleteId } = pp);
+      if (pr?.status === 429) return json({ error: 'Strava is busy right now. Please try again in a few minutes.' }, 429);
+      const html = pr?.ok ? await pr.text() : '';
+      const pp = html ? parseActivityPage(html) : null;
+      const facts = html ? parsePageFacts(html) : null;
+      if (!pp && !facts) return json({ error: NOT_FOUND }, 404);
+      if (facts?.visibility && facts.visibility !== 'Everyone') {
+        return json({ error: 'This activity isn’t public. In Strava, open it → ⋯ → Edit → Who can view → Everyone, then paste the link again.' }, 403);
+      }
+      sportType = facts?.sportType ?? pp?.sportType ?? null;
+      sport = sportOf(sportType);
+      title = facts?.name ?? pp?.title ?? null;
+      athleteName = facts?.athleteName ?? pp?.athleteName ?? null;
+      athleteId = pp?.athleteId ?? null;
+      if (facts?.startLocal && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(facts.startLocal)) {
+        date = facts.startLocal.slice(0, 10); time = facts.startLocal.slice(11, 19).padEnd(8, ':00').slice(0, 8);
+      } else date = pp?.date ?? null;
+      if (!sportType) return json({ error: NOT_FOUND }, 404);
       if (!sport) return json({ error: `This is a ${sportType} activity. Only walks, hikes, runs and rides count.` }, 400);
 
       const m = body.manual;
       if (!m) {
-        return json({ needsStats: true, preview: { id, title, sportType, sport, date, athleteName } });
+        // ---- 2c. GPS track from Strava Labs Flyby → distance and moving time ----
+        const fr = await fetch(flybyUrl(id), { headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' } }).catch(() => null);
+        const st = fr?.ok ? statsFromFlyby(await fr.json().catch(() => null)) : null;
+        if (st && st.distanceM >= 50) {
+          distanceM = st.distanceM; seconds = st.movingS || st.elapsedS; elapsed = st.elapsedS;
+          startUtc = new Date(st.startUtc * 1000).toISOString().replace('.000Z', 'Z');
+        } else {
+          // No GPS (treadmill, indoor) or Flyby unavailable: the member types the numbers.
+          return json({ needsStats: true, preview: { id, title, sportType, sport, date, athleteName } });
+        }
+      } else {
+        const km = Number(m.km), secs = Number(m.seconds);
+        if (!(km >= 0.1 && km <= (sport === 'ride' ? 400 : 120))) return json({ error: 'Enter the distance in km, as shown in Strava.' }, 400);
+        if (!(secs >= 60 && secs <= 24 * 3600)) return json({ error: 'Enter the time, as shown in Strava.' }, 400);
+        if (!date) date = typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) && m.date <= today ? m.date : today;
+        distanceM = Math.round(km * 1000); seconds = Math.round(secs); source = 'manual';
       }
-      const km = Number(m.km), secs = Number(m.seconds);
-      if (!(km >= 0.1 && km <= (sport === 'ride' ? 400 : 120))) return json({ error: 'Enter the distance in km, as shown in Strava.' }, 400);
-      if (!(secs >= 60 && secs <= 24 * 3600)) return json({ error: 'Enter the time, as shown in Strava.' }, 400);
-      if (!date) date = typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) && m.date <= today ? m.date : today;
-      distanceM = Math.round(km * 1000); seconds = Math.round(secs); source = 'manual';
     }
+    if (!date) date = today;
 
     if (!sport) return json({ error: `This is a ${sportType ?? 'different'} activity. Only walks, hikes, runs and rides count.` }, 400);
     if (!athleteId && !athleteName) return json({ error: 'We couldn’t tell whose activity this is. Please try again.' }, 422);
@@ -87,12 +112,12 @@ Deno.serve(async (req) => {
       user_id: user.id,
       sport,
       name: (title ?? sportType ?? 'Activity').slice(0, 120),
-      start_utc: `${date}T${time ?? '12:00:00'}Z`,
+      start_utc: startUtc ?? `${date}T${time ?? '12:00:00'}Z`,
       local_date: date,
       local_time: time ?? '00:00:00',
       distance_m: distanceM,
       moving_s: seconds ?? 0,
-      elapsed_s: seconds ?? 0,
+      elapsed_s: elapsed ?? seconds ?? 0,
       elev_m: elevM,
       source,
       synced_at: new Date().toISOString(),

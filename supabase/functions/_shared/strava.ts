@@ -240,3 +240,55 @@ export function parseActivityPage(html: string): PagePreview | null {
     athleteId: hay.match(/strava\.com\/athletes\/(\d+)/)?.[1] ?? null,
   };
 }
+
+/** Extra public facts from the activity page's Next.js data: visibility, local start, type, athlete. */
+export type PageFacts = { visibility: string | null; startLocal: string | null; sportType: string | null; name: string | null; athleteName: string | null };
+
+export function parsePageFacts(html: string): PageFacts | null {
+  const m = html.match(/<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
+  if (!m) return null;
+  try {
+    const a = JSON.parse(m[1])?.props?.pageProps?.activity;
+    if (!a) return null;
+    const ath = a.athlete ? [a.athlete.firstName, a.athlete.lastName].filter(Boolean).join(' ').trim() : '';
+    return {
+      visibility: a.visibility ?? null,
+      startLocal: typeof a.startLocal === 'string' ? a.startLocal : null,
+      sportType: a.activityKind?.sportType ?? null,
+      name: a.name ?? null,
+      athleteName: ath || null,
+    };
+  } catch { return null; }
+}
+
+/**
+ * Strava Labs "Flyby" (nene.strava.com) still serves the GPS track of public activities without a login.
+ * Unofficial: it can change or stop at any time, so callers must fall back gracefully.
+ */
+export const flybyUrl = (id: string) => `https://nene.strava.com/flyby/stream_compare/${id}/${id}`;
+
+type FlybyPoint = { point?: { lat?: number; lng?: number }; time?: number };
+export type TrackStats = { distanceM: number; movingS: number; elapsedS: number; startUtc: number; points: number };
+
+/** Distance along the GPS track (haversine) and moving time (gaps where the athlete was standing still don't count). */
+export function statsFromFlyby(body: unknown): TrackStats | null {
+  const s = (body as { stream?: FlybyPoint[] })?.stream;
+  if (!Array.isArray(s)) return null;
+  const pts = s.filter((p) => Number.isFinite(p?.point?.lat) && Number.isFinite(p?.point?.lng) && Number.isFinite(p?.time))
+    .map((p) => ({ lat: p.point!.lat!, lng: p.point!.lng!, t: p.time! }))
+    .sort((a, b) => a.t - b.t);
+  if (pts.length < 2) return null;
+  const R = 6371008.8, rad = (x: number) => (x * Math.PI) / 180;
+  let d = 0, moving = 0;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i];
+    const h = Math.sin(rad(b.lat - a.lat) / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(rad(b.lng - a.lng) / 2) ** 2;
+    const seg = 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    const dt = b.t - a.t;
+    if (dt <= 0) continue;
+    if (seg / dt > 60) continue; // GPS glitch (> 216 km/h)
+    d += seg;
+    if (seg / dt >= 0.1 && seg >= 1) moving += dt;
+  }
+  return { distanceM: Math.round(d), movingS: moving, elapsedS: pts[pts.length - 1].t - pts[0].t, startUtc: pts[0].t, points: pts.length };
+}
