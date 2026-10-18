@@ -6,7 +6,9 @@ import type { ReactNode } from 'react';
 import { useSession } from './lib/session';
 import { StoreProvider, useStore } from './lib/store';
 import Welcome from './screens/Welcome';
-import Start from './screens/Start';
+import Start, { RESET_FLAG } from './screens/Start';
+import Login from './screens/Login';
+import SetPassword from './screens/SetPassword';
 import Today from './screens/Today';
 import Challenges from './screens/Challenges';
 import ChallengeDetail from './screens/ChallengeDetail';
@@ -49,14 +51,17 @@ function Guest({ children }: { children: ReactNode }) {
 }
 
 function MemberRoutes() {
-  const { needsProfile } = useSession();
+  const { needsProfile, profile } = useSession();
   const loc = useLocation();
-  // New members (code or Google) give their name and location before anything else.
-  if (needsProfile && loc.pathname !== '/about') return <Navigate to="/about" replace />;
+  const resetting = (() => { try { return sessionStorage.getItem(RESET_FLAG) === '1'; } catch { return false; } })();
+  // New members: 1. email code (done) → 2. create a password → 3. name and location.
+  if (profile && (!profile.password_set || resetting) && loc.pathname !== '/set-password') return <Navigate to="/set-password" replace />;
+  if (profile?.password_set && !resetting && needsProfile && loc.pathname !== '/about') return <Navigate to="/about" replace />;
   return (
     <StoreProvider>
       <Routes>
         <Route path="/about" element={<AboutYou />} />
+        <Route path="/set-password" element={<SetPassword />} />
         <Route path="/admin/insights" element={<AdminOnly><Insights /></AdminOnly>} />
         <Route path="/admin/inbox" element={<AdminOnly><TestInbox /></AdminOnly>} />
         <Route path="/" element={<Today />} />
@@ -79,8 +84,8 @@ export default function App() {
   return (
     <Routes>
       <Route path="/start" element={<Guest><Start /></Guest>} />
+      <Route path="/login" element={<Guest><Login /></Guest>} />
       <Route path="/signup" element={<Navigate to="/start" replace />} />
-      <Route path="/login" element={<Navigate to="/start" replace />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
       <Route path="/*" element={user ? <Member><MemberRoutes /></Member> : <Routes><Route path="/" element={<Welcome />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>} />
     </Routes>

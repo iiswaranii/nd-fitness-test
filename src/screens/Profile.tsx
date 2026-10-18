@@ -119,8 +119,13 @@ export default function Profile() {
           <div className="list">
             <div className="list-row">
               <span className="sp" style={{ ['--c' as string]: 'var(--ink-2)' }}><Icon name="mail" /></span>
-              <span className="grow"><span className="strong" style={{ display: 'block' }}>Signed in with {user.provider === 'google' ? 'Google' : 'email'}</span><span className="small muted">No password. You get a code each time you sign in on a new phone.</span></span>
+              <span className="grow"><span className="strong" style={{ display: 'block' }}>Email and password</span><span className="small muted">Forgot it? On the log-in screen, get a code by email.</span></span>
             </div>
+            <button className="list-row" onClick={() => nav('/set-password')}>
+              <span className="sp" style={{ ['--c' as string]: 'var(--ink-2)' }}><Icon name="shield" /></span>
+              <span className="grow strong">Change password</span>
+              <Icon name="chev" />
+            </button>
             <button
               className="list-row"
               onClick={async () => { await auth.signOut(); nav('/', { replace: true }); }}

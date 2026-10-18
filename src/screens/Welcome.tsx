@@ -31,8 +31,8 @@ export default function Welcome() {
       </div>
       <div className="spacer" />
       <div className="stack tight" style={{ paddingTop: 24 }}>
-        <Button onClick={() => nav('/start')}>Get started</Button>
-        <p className="legal">New or returning, it’s the same: sign in with Google, or get a code by email.</p>
+        <Button onClick={() => nav('/start')}>Create an account</Button>
+        <Button variant="secondary" onClick={() => nav('/login')}>Log in</Button>
       </div>
     </Screen>
   );

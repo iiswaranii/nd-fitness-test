@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { DEMO_AUTH, DEMO_OTP, SUPABASE_ANON_KEY, SUPABASE_URL, goToRoute } from './config';
+import { DEMO_AUTH, DEMO_OTP } from './config';
 import type { Identifier } from './validation';
 
 export type AppUser = {
@@ -30,9 +30,11 @@ export interface AuthApi {
   readonly demo: boolean;
   currentUser(): Promise<AppUser | null>;
   onChange(cb: (u: AppUser | null) => void): () => void;
-  signInWithGoogle(): Promise<void>;
-  /** One code for both new and returning members: the account is created on first sign-in. */
-  sendOtp(id: Identifier): Promise<void>;
+  /** Email code. 'signup' creates the account if needed; 'reset' only works for existing accounts. */
+  sendOtp(id: Identifier, mode?: 'signup' | 'reset'): Promise<void>;
+  signInWithPassword(email: string, password: string): Promise<void>;
+  /** Sets (or changes) the signed-in member's password. */
+  setPassword(password: string): Promise<void>;
   verifyOtp(id: Identifier, code: string): Promise<void>;
   signOut(): Promise<void>;
   getProfile(uid: string): Promise<Profile | null>;
@@ -77,20 +79,10 @@ const supabaseAuth: AuthApi = {
     const { data } = sb().auth.onAuthStateChange((_e, session) => cb(toAppUser(session?.user)));
     return () => data.subscription.unsubscribe();
   },
-  async signInWithGoogle() {
-    // Check first: if Google isn't switched on in Supabase, the redirect would land on a raw JSON error page.
-    const st = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_ANON_KEY } }).then((r) => r.json()).catch(() => null);
-    if (st && !st.external?.google) throw new Error('provider is not enabled');
-    const { error } = await sb().auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${location.origin}${import.meta.env.BASE_URL}auth/callback`, queryParams: { prompt: 'select_account' } },
-    });
-    if (error) throw error;
-  },
-  async sendOtp(id) {
+  async sendOtp(id, mode = 'signup') {
     const { error } =
       id.kind === 'email'
-        ? await sb().auth.signInWithOtp({ email: id.email, options: { shouldCreateUser: true } })
+        ? await sb().auth.signInWithOtp({ email: id.email, options: { shouldCreateUser: mode === 'signup' } })
         : await sb().auth.signInWithOtp({ phone: id.phone, options: { shouldCreateUser: true, channel: 'sms' } });
     if (error) throw error;
   },
@@ -100,6 +92,15 @@ const supabaseAuth: AuthApi = {
         ? await sb().auth.verifyOtp({ email: id.email, token: code, type: 'email' })
         : await sb().auth.verifyOtp({ phone: id.phone, token: code, type: 'sms' });
     if (error) throw error;
+  },
+  async signInWithPassword(email, password) {
+    const { error } = await sb().auth.signInWithPassword({ email, password });
+    if (error) throw error;
+  },
+  async setPassword(password) {
+    const { data, error } = await sb().auth.updateUser({ password });
+    if (error) throw error;
+    if (data.user) await sb().from('profiles').update({ password_set: true }).eq('id', data.user.id);
   },
   async signOut() {
     await sb().auth.signOut();
@@ -176,18 +177,10 @@ const demoAuth: AuthApi = {
     listeners.add(cb);
     return () => listeners.delete(cb);
   },
-  async signInWithGoogle() {
-    await wait(700);
-    const db = load();
-    const key = 'g:you@gmail.com';
-    if (!db.accounts[key]) addAccount(db, key, newAccount(null, true));
-    db.session = key;
-    save(db);
-    goToRoute('/auth/callback');
-  },
-  async sendOtp(id) {
+  async sendOtp(id, mode = 'signup') {
     await wait(650);
     const db = load();
+    if (mode === 'reset' && !db.accounts[keyOf(id)]) throw new Error('Signups not allowed for otp');
     db.pending = { key: keyOf(id) };
     save(db);
   },
@@ -201,6 +194,25 @@ const demoAuth: AuthApi = {
     db.pending = null;
     save(db);
     emit(db);
+  },
+  async signInWithPassword(email, password) {
+    await wait(600);
+    const db = load();
+    const key = keyOf({ kind: 'email', email });
+    const acc = db.accounts[key];
+    if (!acc || !acc.password || acc.password !== password) throw new Error('Invalid login credentials');
+    db.session = key;
+    save(db);
+    emit(db);
+  },
+  async setPassword(password) {
+    await wait(400);
+    const db = load();
+    const acc = db.session ? db.accounts[db.session] : null;
+    if (!acc) throw new Error('Please log in again.');
+    acc.password = password;
+    acc.profile.password_set = true;
+    save(db);
   },
   async signOut() {
     const db = load();

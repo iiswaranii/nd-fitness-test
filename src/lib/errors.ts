@@ -5,7 +5,7 @@ export function friendlyError(err: unknown): string {
   if (!navigator.onLine || m.includes('failed to fetch') || m.includes('network'))
     return 'You’re offline. Check your connection and try again.';
   if (m.includes('invalid login credentials'))
-    return 'That email or mobile number and password don’t match.';
+    return 'That email and password don’t match. Forgot it? Get a code instead.';
   if (m.includes('token has expired') || m.includes('otp') && m.includes('invalid') || m.includes('invalid token'))
     return 'That code is wrong or has expired. Check it, or ask for a new one.';
   const wait = raw.match(/after (\d+) seconds?/i);
@@ -13,7 +13,7 @@ export function friendlyError(err: unknown): string {
   if (m.includes('rate limit') || m.includes('too many'))
     return 'Too many attempts. Please wait a few minutes and try again.';
   if (m.includes('signups not allowed') || m.includes('user not found') || m.includes('no account'))
-    return 'No account found with that email or number. Sign up instead.';
+    return 'No account with that email yet. Create an account instead.';
   if (m.includes('already registered') || m.includes('already exists'))
     return 'An account already exists. Log in instead.';
   if (m.includes('unsupported phone provider') || m.includes('phone provider') || m.includes('sms'))
