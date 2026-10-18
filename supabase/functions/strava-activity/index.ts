@@ -1,7 +1,8 @@
 // Adds one walk / run / ride from a pasted Strava link. No Strava connection.
 //  1. Resolve the link to the real activity id (strava.app.link share links redirect to it).
 //  2. Public activity page → title, type, local date/time, athlete, visibility (must be Everyone).
-//     Distance and moving time come from the activity's public GPS track (Strava Labs Flyby).
+//     Distance and moving time are suggested from the activity's public GPS track (Strava Labs Flyby);
+//     the member reviews and can correct every field, then the app calls again with `manual` to save.
 //     A pasted Embed code (with token) uses Strava's own embed numbers instead.
 //  3. No GPS track (treadmill, indoor) → { needsStats }; the member types distance and time (`manual`).
 // The member's first link ties their account to that Strava athlete; later links must be by the same athlete,
@@ -64,23 +65,33 @@ Deno.serve(async (req) => {
 
       const m = body.manual;
       if (!m) {
-        // ---- 2c. GPS track from Strava Labs Flyby → distance and moving time ----
+        // ---- 2c. GPS track from Strava Labs Flyby → suggested distance and moving time ----
+        // Nothing is saved yet: the member checks (and can correct) the numbers first.
         const fr = await fetch(flybyUrl(id), { headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' } }).catch(() => null);
         const st = fr?.ok ? statsFromFlyby(await fr.json().catch(() => null)) : null;
-        if (st && st.distanceM >= 50) {
-          distanceM = st.distanceM; seconds = st.movingS || st.elapsedS; elapsed = st.elapsedS;
-          startUtc = new Date(st.startUtc * 1000).toISOString().replace('.000Z', 'Z');
-        } else {
-          // No GPS (treadmill, indoor) or Flyby unavailable: the member types the numbers.
-          return json({ needsStats: true, preview: { id, title, sportType, sport, date, athleteName } });
+        const ok = !!st && st.distanceM >= 50;
+        // Strava hides the part of a route inside a privacy zone. If the public track starts later than the
+        // activity did, part of it is missing and the distance is too short.
+        let partial = false;
+        if (ok && facts?.startLocal) {
+          const local = Date.parse(facts.startLocal.slice(0, 19) + 'Z') / 1000;
+          if (Number.isFinite(local)) { const gap = (((st!.startUtc - local) % 900) + 900) % 900; partial = gap > 90 && gap < 810; }
         }
-      } else {
-        const km = Number(m.km), secs = Number(m.seconds);
-        if (!(km >= 0.1 && km <= (sport === 'ride' ? 400 : 120))) return json({ error: 'Enter the distance in km, as shown in Strava.' }, 400);
-        if (!(secs >= 60 && secs <= 24 * 3600)) return json({ error: 'Enter the time, as shown in Strava.' }, 400);
-        if (!date) date = typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) && m.date <= today ? m.date : today;
-        distanceM = Math.round(km * 1000); seconds = Math.round(secs); source = 'manual';
+        return json({ needsStats: true, preview: {
+          id, title, sportType, sport, date, time, athleteName,
+          km: ok ? Math.round(st!.distanceM / 10) / 100 : null,
+          seconds: ok ? (st!.movingS || st!.elapsedS) : null,
+          measured: ok, partial,
+        } });
       }
+      const km = Number(m.km), secs = Number(m.seconds);
+      const ms = typeof m.sport === 'string' && ['walk', 'run', 'ride'].includes(m.sport) ? m.sport as Sport : null;
+      if (ms) sport = ms;
+      if (!(km >= 0.1 && km <= (sport === 'ride' ? 400 : 120))) return json({ error: 'Enter the distance in km, as shown in Strava.' }, 400);
+      if (!(secs >= 60 && secs <= 24 * 3600)) return json({ error: 'Enter the time, as shown in Strava.' }, 400);
+      if (typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) && m.date <= today) { if (m.date !== date) time = null; date = m.date; }
+      distanceM = Math.round(km * 1000); seconds = Math.round(secs);
+      source = m.edited ? 'manual' : 'link';
     }
     if (!date) date = today;
 

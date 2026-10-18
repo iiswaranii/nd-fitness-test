@@ -57,8 +57,15 @@ export function parseStravaLink(text: string): { id?: string; shortUrl?: string;
   return null;
 }
 
-export type ManualStats = { km: number; seconds: number; sport?: Sport; date?: string };
-export type LinkPreview = { id: string | null; title: string | null; sportType: string | null; sport: Sport | null; date: string | null; athleteName: string | null };
+export type ManualStats = { km: number; seconds: number; sport?: Sport; date?: string; edited?: boolean };
+export type LinkPreview = {
+  id: string | null; title: string | null; sportType: string | null; sport: Sport | null; date: string | null; athleteName: string | null;
+  time?: string | null;
+  /** Suggested from the public GPS route; the member reviews before saving. */
+  km?: number | null; seconds?: number | null; measured?: boolean;
+  /** Part of the route is hidden by a Strava privacy zone, so the distance is likely too short. */
+  partial?: boolean;
+};
 export type LinkResult =
   | { needsStats?: false; activity: Activity; athleteName: string; firstLink: boolean }
   | { needsStats: true; preview: LinkPreview };

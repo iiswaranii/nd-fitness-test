@@ -39,7 +39,15 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
   };
 
   const done = async (r: Awaited<ReturnType<typeof data.addActivityByLink>>) => {
-    if (r.needsStats) { setPreview(r.preview); if (r.preview.sport) setSport(r.preview.sport); if (r.preview.date) setDate(r.preview.date); return; }
+    if (r.needsStats) {
+      const p = r.preview;
+      setPreview(p);
+      if (p.sport) setSport(p.sport);
+      if (p.date) setDate(p.date);
+      setKm(p.km ? String(p.km) : '');
+      if (p.seconds) { setHh(String(Math.floor(p.seconds / 3600))); setMm(String(Math.round((p.seconds % 3600) / 60))); } else { setHh(''); setMm(''); }
+      return;
+    }
     await reload();
     if (r.firstLink) await refreshProfile();
     toast(`Added: ${fmtKm(r.activity.km)} km ${SPORTS[r.activity.sport].verb.toLowerCase()}${r.firstLink && r.athleteName ? ` · linked to ${r.athleteName}` : ''}`);
@@ -60,7 +68,10 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
     if (!(k > 0)) { setErr('Enter the distance in km, as shown in Strava.'); return; }
     if (secs < 60) { setErr('Enter the time (hours and minutes), as shown in Strava.'); return; }
     setBusy(true); setErr(null);
-    try { await done(await data.addActivityByLink(url, { km: k, seconds: secs, sport, date })); }
+    const p = preview;
+    const edited = !p?.measured || p.partial || k !== p.km || sport !== p.sport || date !== p.date
+      || Math.abs(secs - Math.round((p.seconds ?? 0) / 60) * 60) >= 60;
+    try { await done(await data.addActivityByLink(url, { km: k, seconds: secs, sport, date, edited })); }
     catch (e) { setErr(friendlyError(e)); }
     finally { setBusy(false); }
   };
@@ -73,7 +84,7 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
         <>
           <div className="stack tight">
             <h2 className="h1" style={{ fontSize: 24 }}>Add from Strava</h2>
-            <p className="lead">In Strava, open your walk, run or ride, tap <span className="strong">Share → Copy link</span>, then paste it here. We read the distance, type and date for you.</p>
+            <p className="lead">In Strava, open your walk, run or ride, tap <span className="strong">Share → Copy link</span>, then paste it here. We fill in the details for you to check.</p>
           </div>
           <form className="stack" onSubmit={(e) => { e.preventDefault(); submitLink(); }}>
             <div className="field">
@@ -101,29 +112,31 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
             {preview.sport || preview.date || preview.athleteName ? (
               <p className="lead">{[preview.sportType, preview.date ? fmtDay(preview.date) : null, preview.athleteName].filter(Boolean).join(' · ')}</p>
             ) : null}
-            <p className="small muted">This activity has no GPS route in Strava (for example a treadmill walk), so we can’t measure it. Type the distance and time as Strava shows them.</p>
+            {preview.partial ? (
+              <p className="notice">Part of this route is hidden by a Strava privacy zone, so the distance below is too short. Please correct it to match Strava.</p>
+            ) : preview.measured ? (
+              <p className="small muted">We measured this from the activity’s route. Check it matches Strava and fix anything that’s off, then save.</p>
+            ) : (
+              <p className="small muted">We couldn’t measure this activity’s route (for example a treadmill walk). Type the distance and time as Strava shows them.</p>
+            )}
           </div>
 
 
-          {!preview.sport ? (
             <div className="field">
               <label>Type</label>
               <div className="chip-row wrap">
                 {(['walk', 'run', 'ride'] as Sport[]).map((s) => <button key={s} type="button" className="chip" aria-pressed={sport === s} onClick={() => setSport(s)}>{SPORTS[s].verb}</button>)}
               </div>
             </div>
-          ) : null}
-          {!preview.date ? (
             <div className="field">
               <label htmlFor="ad">Date</label>
               <input id="ad" className="input" type="date" value={date} min={addDays(today(), -60)} max={today()} onChange={(e) => setDate(e.target.value)} />
             </div>
-          ) : null}
 
           <div className="field">
             <label htmlFor="akm">Distance</label>
             <div className="input-wrap">
-              <input id="akm" className="input has-unit" inputMode="decimal" placeholder="e.g. 4.25" value={km} autoFocus
+              <input id="akm" className="input has-unit" inputMode="decimal" placeholder="e.g. 4.25" value={km}
                 onChange={(e) => { setKm(e.target.value.replace(/[^\d.,]/g, '')); setErr(null); }} />
               <span className="unit">km</span>
             </div>
@@ -145,7 +158,7 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
           </div>
 
           <ErrorText>{err}</ErrorText>
-          <Button type="submit" variant="strava" loading={busy}>Add activity</Button>
+          <Button type="submit" variant="strava" loading={busy}>Save activity</Button>
           <Button type="button" variant="ghost" onClick={() => { setPreview(null); setErr(null); }}>Back</Button>
         </form>
       )}
