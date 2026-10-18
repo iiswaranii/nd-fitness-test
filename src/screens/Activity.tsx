@@ -11,7 +11,7 @@ import { friendlyError } from '../lib/errors';
 import { AddLinkSheet } from '../components/AddLinkSheet';
 import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
-import { addDays, fmtDay, fmtDur, fmtKm, relDay, today } from '../lib/dates';
+import { addDays, fmtDay, fmtDur, fmtHms, fmtKm, relDay, today } from '../lib/dates';
 import { SPORTS, type Activity as Act } from '../lib/types';
 
 const weekStart = (s: string) => { const [y, m, d] = s.split('-').map(Number); const dt = new Date(y, m - 1, d); dt.setDate(dt.getDate() - ((dt.getDay() + 6) % 7)); return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`; };
@@ -24,6 +24,7 @@ export default function Activity() {
   const [link, setLink] = useState(false);
   const [del, setDel] = useState<Act | null>(null);
   const [busy, setBusy] = useState(false);
+  const [openWeek, setOpenWeek] = useState<string | null>(null);
   const refresh = useCallback(async () => { await reload(); }, [reload]);
 
   const cut = addDays(today(), -13);
@@ -57,16 +58,7 @@ export default function Activity() {
                 <div key={d} className="stack tight">
                   <p className="grp-h">{relDay(d)}</p>
                   <div className="list">
-                    {byDay[d].map((a) => (
-                      <button key={a.id} className="list-row" style={{ ['--c' as string]: SPORTS[a.sport].color }} onClick={() => setDel(a)} aria-label={`${a.name}, options`}>
-                        <span className="sp"><Icon name={SPORTS[a.sport].icon} /></span>
-                        <span className="grow">
-                          <span className="strong" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
-                          <span className="small muted">{SPORTS[a.sport].verb}{a.time !== '00:00' ? ` · ${a.time}` : ''} · {fmtDur(a.moving_s)}</span>
-                        </span>
-                        <span className="rv">{fmtKm(a.km)}<small>km</small></span>
-                      </button>
-                    ))}
+                    {byDay[d].map((a) => <ActRow key={a.id} a={a} onOpen={() => setDel(a)} />)}
                   </div>
                 </div>
               ))}
@@ -77,11 +69,15 @@ export default function Activity() {
                   <div className="list">
                     {Object.keys(byWeek).sort().reverse().map((w) => {
                       const xs = byWeek[w];
+                      const open = openWeek === w;
                       return (
-                        <div key={w} className="list-row">
-                          <span className="sp" style={{ ['--c' as string]: 'var(--ink-2)' }}><Icon name="cal" /></span>
-                          <span className="grow"><span className="strong" style={{ display: 'block' }}>Week of {fmtDay(w)}</span><span className="small muted">{xs.length} {xs.length === 1 ? 'activity' : 'activities'} · {fmtDur(xs.reduce((s, a) => s + a.moving_s, 0))}</span></span>
-                          <span className="rv">{fmtKm(xs.reduce((s, a) => s + a.km, 0))}<small>km</small></span>
+                        <div key={w}>
+                          <button className="list-row" aria-expanded={open} onClick={() => setOpenWeek(open ? null : w)}>
+                            <span className="sp" style={{ ['--c' as string]: 'var(--ink-2)' }}><Icon name="cal" /></span>
+                            <span className="grow"><span className="strong" style={{ display: 'block' }}>Week of {fmtDay(w)}</span><span className="small muted">{xs.length} {xs.length === 1 ? 'activity' : 'activities'} · {fmtDur(xs.reduce((s, a) => s + a.moving_s, 0))}</span></span>
+                            <span className="rv">{fmtKm(xs.reduce((s, a) => s + a.km, 0))}<small>km</small></span>
+                          </button>
+                          {open ? xs.slice().sort((x, y) => (x.date < y.date ? 1 : -1)).map((a) => <ActRow key={a.id} a={a} onOpen={() => setDel(a)} showDate />) : null}
                         </div>
                       );
                     })}
@@ -110,21 +106,37 @@ export default function Activity() {
           <>
             <div className="stack tight">
               <h2 className="h1" style={{ fontSize: 24 }}>{del.name}</h2>
-              <p className="lead">{SPORTS[del.sport].verb} · {fmtDay(del.date)} · {fmtKm(del.km)} km · {fmtDur(del.moving_s)}</p>
+              <p className="lead">{SPORTS[del.sport].verb} · {fmtDay(del.date)} · {fmtKm(del.km)} km · {fmtHms(del.moving_s)}</p>
               {del.source === 'manual' ? <p className="small muted">Distance and time typed in from Strava.</p> : null}
             </div>
             <div className="stack tight">
               <a className="btn ghost" href={del.url ?? `https://www.strava.com/activities/${del.id}`} target="_blank" rel="noreferrer">Open in Strava</a>
               <Button variant="danger" loading={busy} onClick={async () => {
                 setBusy(true);
-                try { await data.removeActivity(del.id); await reload(); setDel(null); toast('Activity removed'); }
+                try { await data.removeActivity(del.id); await reload(); setDel(null); toast('Activity deleted'); }
                 catch (e) { toast(friendlyError(e)); } finally { setBusy(false); }
-              }}>Remove from app</Button>
-              <p className="legal">Added the wrong one? Removing it here doesn’t change anything on Strava.</p>
+              }}><Icon name="trash" />Delete this activity</Button>
+              <p className="legal">Deleting it here removes it from your challenges. Nothing changes on Strava, and you can add it again with its link.</p>
             </div>
           </>
         ) : null}
       </Sheet>
     </Page>
+  );
+}
+
+function ActRow({ a, onOpen, showDate }: { a: Act; onOpen: () => void; showDate?: boolean }) {
+  return (
+    <div className="list-row act-row" style={{ ['--c' as string]: SPORTS[a.sport].color }}>
+      <button className="act-main" onClick={onOpen} aria-label={`${a.name}, details`}>
+        <span className="sp"><Icon name={SPORTS[a.sport].icon} /></span>
+        <span className="grow">
+          <span className="strong" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
+          <span className="small muted">{showDate ? `${fmtDay(a.date)} · ` : ''}{SPORTS[a.sport].verb}{a.time !== '00:00' && !showDate ? ` · ${a.time}` : ''} · {fmtHms(a.moving_s)}</span>
+        </span>
+        <span className="rv">{fmtKm(a.km)}<small>km</small></span>
+      </button>
+      <button className="icon-btn act-del" onClick={onOpen} aria-label={`Delete ${a.name}`}><Icon name="trash" /></button>
+    </div>
   );
 }

@@ -26,11 +26,12 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
   const [km, setKm] = useState('');
   const [hh, setHh] = useState('');
   const [mm, setMm] = useState('');
+  const [ss, setSs] = useState('');
   const [sport, setSport] = useState<Sport>('walk');
   const [date, setDate] = useState(today());
   const athlete = profile?.strava_connected ? profile.strava_athlete_name : null;
 
-  const reset = () => { setUrl(''); setPreview(null); setKm(''); setHh(''); setMm(''); setErr(null); setDate(today()); setSport('walk'); };
+  const reset = () => { setUrl(''); setPreview(null); setKm(''); setHh(''); setMm(''); setSs(''); setErr(null); setDate(today()); setSport('walk'); };
   const close = () => { reset(); onClose(); };
 
   const paste = async () => {
@@ -45,7 +46,7 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
       if (p.sport) setSport(p.sport);
       if (p.date) setDate(p.date);
       setKm(p.km ? String(p.km) : '');
-      if (p.seconds) { setHh(String(Math.floor(p.seconds / 3600))); setMm(String(Math.round((p.seconds % 3600) / 60))); } else { setHh(''); setMm(''); }
+      if (p.seconds) { const t = Math.round(p.seconds); setHh(String(Math.floor(t / 3600))); setMm(String(Math.floor((t % 3600) / 60))); setSs(String(t % 60)); } else { setHh(''); setMm(''); setSs(''); }
       return;
     }
     await reload();
@@ -64,13 +65,14 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
 
   const submitStats = async () => {
     const k = parseFloat(km.replace(',', '.'));
-    const secs = (parseInt(hh || '0', 10) || 0) * 3600 + (parseInt(mm || '0', 10) || 0) * 60;
+    const secs = (parseInt(hh || '0', 10) || 0) * 3600 + (parseInt(mm || '0', 10) || 0) * 60 + (parseInt(ss || '0', 10) || 0);
+    if ((parseInt(mm || '0', 10) || 0) > 59 || (parseInt(ss || '0', 10) || 0) > 59) { setErr('Minutes and seconds go up to 59.'); return; }
     if (!(k > 0)) { setErr('Enter the distance in km, as shown in Strava.'); return; }
-    if (secs < 60) { setErr('Enter the time (hours and minutes), as shown in Strava.'); return; }
+    if (secs < 60) { setErr('Enter the time (hours, minutes, seconds), as shown in Strava.'); return; }
     setBusy(true); setErr(null);
     const p = preview;
     const edited = !p?.measured || p.partial || k !== p.km || sport !== p.sport || date !== p.date
-      || Math.abs(secs - Math.round((p.seconds ?? 0) / 60) * 60) >= 60;
+      || secs !== Math.round(p.seconds ?? 0);
     try { await done(await data.addActivityByLink(url, { km: k, seconds: secs, sport, date, edited })); }
     catch (e) { setErr(friendlyError(e)); }
     finally { setBusy(false); }
@@ -154,7 +156,12 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
               <div className="input-wrap grow">
                 <input className="input has-unit" inputMode="numeric" placeholder="45" maxLength={2} value={mm} aria-label="Minutes"
                   onChange={(e) => { setMm(e.target.value.replace(/\D/g, '')); setErr(null); }} />
-                <span className="unit">min</span>
+                <span className="unit">m</span>
+              </div>
+              <div className="input-wrap grow">
+                <input className="input has-unit" inputMode="numeric" placeholder="00" maxLength={2} value={ss} aria-label="Seconds"
+                  onChange={(e) => { setSs(e.target.value.replace(/\D/g, '')); setErr(null); }} />
+                <span className="unit">s</span>
               </div>
             </div>
           </div>

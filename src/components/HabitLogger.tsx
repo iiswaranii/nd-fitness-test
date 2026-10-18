@@ -150,6 +150,26 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
         </div>
       ) : null}
 
+      {!isWeight && entries.length ? (
+        <div className="stack tight">
+          <span className="label">Entries {dayLabel}</span>
+          <div className="list">
+            {entries.map((n, i) => (
+              <div key={i} className="list-row" style={{ padding: '6px 6px 6px 16px', minHeight: 48 }}>
+                <span className="grow strong">+{fmtAmount(n, h.unit)}</span>
+                <button type="button" className="icon-btn act-del" disabled={busy} aria-label={`Delete +${fmtAmount(n, h.unit)}`}
+                  onClick={() => {
+                    const rest = entries.filter((_, j) => j !== i);
+                    const next = +Math.max(0, total - n).toFixed(2);
+                    if (!rest.length) commit(null, [], `Deleted +${fmtAmount(n, h.unit)} · nothing logged ${dayLabel}`);
+                    else commit(next, rest, `Deleted +${fmtAmount(n, h.unit)} · ${fmtAmount(next, h.unit)} ${dayLabel}`);
+                  }}><Icon name="trash" /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
       {mode === 'add' ? (
         <>
           {/* Choose an amount first; nothing is saved until "Save" is tapped. */}
@@ -189,6 +209,11 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
               <Icon name="edit" className="ic" /> Edit {dayLabel}’s total
             </button>
           ) : null}
+          {value !== null ? (
+            <button className="link-btn muted" style={{ alignSelf: 'center' }} disabled={busy} onClick={() => commit(null, [], `Deleted ${dayLabel}’s entry`)}>
+              <Icon name="trash" className="ic" /> Delete {dayLabel}’s entry
+            </button>
+          ) : null}
         </>
       ) : (
         <form className="stack tight" onSubmit={(e) => {
@@ -202,6 +227,11 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
           <input id="tot" className="input" style={{ fontFamily: 'var(--font-d)', fontSize: 22, textAlign: 'center' }} type="number" inputMode="decimal" min="0" step={h.step ?? 1}
             placeholder={isWeight ? 'e.g. 72.4' : '0'} value={edit} onChange={(e) => setEdit(e.target.value)} autoFocus={!isWeight} />
           <Button type="submit" className="tint" loading={busy}>Save</Button>
+          {isWeight && value !== null ? (
+            <button type="button" className="link-btn muted" style={{ alignSelf: 'center' }} disabled={busy} onClick={() => commit(null, [], `Deleted ${dayLabel}’s weight`)}>
+              <Icon name="trash" className="ic" /> Delete {dayLabel}’s weight
+            </button>
+          ) : null}
           {!isWeight ? <button type="button" className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => setMode('add')}>Back to adding</button> : null}
         </form>
       )}
@@ -230,7 +260,7 @@ function CheckLogger({ h, value, commit, busy }: { h: Habit; value: number | nul
         onClick={() => pick !== null && commit(pick, [], pick === 1 ? 'Nice work! Logged as done.' : 'Logged. Every day is a fresh start.')}>
         {value === null ? 'Save' : changed ? 'Update' : 'Saved'}
       </Button>
-      {value !== null ? <button className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => commit(null, [], 'Entry cleared')}>Clear this day</button> : null}
+      {value !== null ? <button className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => commit(null, [], 'Entry deleted')}><Icon name="trash" className="ic" /> Delete this day’s entry</button> : null}
     </div>
   );
 }
@@ -263,7 +293,7 @@ function TimeLogger({ h, target, value, commit, busy }: { h: Habit; target: numb
       <Button className="tint" loading={busy} onClick={() => commit(mins, [], ok ? `Saved ${fmtClock(mins)} · right on time!` : `Saved ${fmtClock(mins)}`)}>
         {value === null ? 'Save' : 'Update'} {fmtClock(mins)}
       </Button>
-      {value !== null ? <button className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => commit(null, [], 'Entry cleared')}>Clear this day</button> : null}
+      {value !== null ? <button className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => commit(null, [], 'Entry deleted')}><Icon name="trash" className="ic" /> Delete this day’s entry</button> : null}
     </div>
   );
 }
