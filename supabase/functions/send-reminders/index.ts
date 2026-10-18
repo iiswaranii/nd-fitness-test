@@ -1,6 +1,6 @@
-// Runs every 15 minutes (pg_cron). Sends each member's daily reminder at their chosen local time,
+// Runs every 5 minutes (pg_cron). Sends each member's daily reminder at their chosen local time,
 // only for active challenges they haven't logged today, at most once a day per challenge.
-import { admin, cors, env, json } from '../_shared/common.ts';
+import { admin, cors, json } from '../_shared/common.ts';
 import { sendAll, type Sub } from '../_shared/push.ts';
 
 function localNow(tz: string) {
@@ -11,9 +11,11 @@ function localNow(tz: string) {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
-  if (req.headers.get('Authorization') !== `Bearer ${env('CRON_SECRET')}`) return json({ error: 'Not allowed' }, 401);
   try {
     const db = admin();
+    // Only the scheduled job may run this. It sends a secret that lives in app_keys (created by SQL, never typed in).
+    const { data: key } = await db.from('app_keys').select('value').eq('name', 'cron_secret').maybeSingle();
+    if (!key?.value || req.headers.get('x-cron-secret') !== key.value) return json({ error: 'Not allowed' }, 401);
     const { data: rows } = await db
       .from('challenge_members')
       .select('challenge_id, user_id, reminder_time, last_reminded, challenges!inner(id, title, category, sport, habit_key, start_date, end_date, cancelled)')
