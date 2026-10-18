@@ -63,6 +63,8 @@ export type LinkPreview = {
   time?: string | null;
   /** Suggested from the public GPS route; the member reviews before saving. */
   km?: number | null; seconds?: number | null; measured?: boolean;
+  /** Numbers are Strava's own summary (not measured from the route). */
+  official?: boolean;
   /** Part of the route is hidden by a Strava privacy zone, so the distance is likely too short. */
   partial?: boolean;
 };

@@ -8,7 +8,7 @@
 // The member's first link ties their account to that Strava athlete; later links must be by the same athlete,
 // and each activity can be added by only one member.
 import { admin, cors, json, requireUser } from '../_shared/common.ts';
-import { BROWSER_UA, embedUrl, flybyUrl, parseActivityPage, parseEmbed, parsePageFacts, resolveShortLink, sportOf, statsFromFlyby, type Sport } from '../_shared/strava.ts';
+import { BROWSER_UA, embedUrl, FLYBY_HEADERS, flybyMatchesUrl, flybyUrl, parseActivityPage, summaryFromFlyby, parseEmbed, parsePageFacts, resolveShortLink, sportOf, statsFromFlyby, type Sport } from '../_shared/strava.ts';
 
 const NOT_FOUND = 'We couldn’t open this activity. Check that the link is right and the activity isn’t set to “Only you” in Strava.';
 const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
@@ -65,13 +65,21 @@ Deno.serve(async (req) => {
 
       const m = body.manual;
       if (!m) {
-        // ---- 2c. GPS track from Strava Labs Flyby → suggested distance and moving time ----
+        // ---- 2c. Strava's own summary via Strava Labs Flyby (distance, elapsed time, athlete id) ----
         // Nothing is saved yet: the member checks (and can correct) the numbers first.
+        const mr = await fetch(flybyMatchesUrl(id), { headers: { 'User-Agent': BROWSER_UA, ...FLYBY_HEADERS } }).catch(() => null);
+        const sum = mr?.ok ? summaryFromFlyby(await mr.json().catch(() => null), id) : null;
+        if (sum) {
+          if (sum.activityType && !sportType) { sportType = sum.activityType; sport = sportOf(sportType); }
+          return json({ needsStats: true, preview: {
+            id, title: title ?? sum.name, sportType, sport, date, time, athleteName,
+            km: Math.round(sum.distanceM / 10) / 100, seconds: sum.elapsedS, measured: true, partial: false, official: true,
+          } });
+        }
+        // ---- 2d. fallback: measure the public GPS track (misses parts hidden by a privacy zone) ----
         const fr = await fetch(flybyUrl(id), { headers: { 'User-Agent': BROWSER_UA, Accept: 'application/json' } }).catch(() => null);
         const st = fr?.ok ? statsFromFlyby(await fr.json().catch(() => null)) : null;
         const ok = !!st && st.distanceM >= 50;
-        // Strava hides the part of a route inside a privacy zone. If the public track starts later than the
-        // activity did, part of it is missing and the distance is too short.
         let partial = false;
         if (ok && facts?.startLocal) {
           const local = Date.parse(facts.startLocal.slice(0, 19) + 'Z') / 1000;
@@ -83,6 +91,10 @@ Deno.serve(async (req) => {
           seconds: ok ? (st!.movingS || st!.elapsedS) : null,
           measured: ok, partial,
         } });
+      }
+      if (!athleteId) {
+        const mr = await fetch(flybyMatchesUrl(id), { headers: { 'User-Agent': BROWSER_UA, ...FLYBY_HEADERS } }).catch(() => null);
+        athleteId = (mr?.ok ? summaryFromFlyby(await mr.json().catch(() => null), id) : null)?.athleteId ?? null;
       }
       const km = Number(m.km), secs = Number(m.seconds);
       const ms = typeof m.sport === 'string' && ['walk', 'run', 'ride'].includes(m.sport) ? m.sport as Sport : null;

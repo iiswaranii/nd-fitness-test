@@ -114,6 +114,8 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
             ) : null}
             {preview.partial ? (
               <p className="notice">Part of this route is hidden by a Strava privacy zone, so the distance below is too short. Please correct it to match Strava.</p>
+            ) : preview.official ? (
+              <p className="small muted">These are the numbers Strava has for this activity. Check them and fix anything that’s off, then save.</p>
             ) : preview.measured ? (
               <p className="small muted">We measured this from the activity’s route. Check it matches Strava and fix anything that’s off, then save.</p>
             ) : (

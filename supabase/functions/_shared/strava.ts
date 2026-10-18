@@ -292,3 +292,29 @@ export function statsFromFlyby(body: unknown): TrackStats | null {
   }
   return { distanceM: Math.round(d), movingS: moving, elapsedS: pts[pts.length - 1].t - pts[0].t, startUtc: pts[0].t, points: pts.length };
 }
+
+/**
+ * Flyby "matches" also returns the activity's own summary as Strava stores it: distance (m, including any part
+ * hidden by a privacy zone), elapsed time (s), start time (unix), type and athlete id. Needs the Flyby viewer's
+ * origin/referer headers.
+ */
+export const flybyMatchesUrl = (id: string) => `https://nene.strava.com/flyby/matches/${id}`;
+export const FLYBY_HEADERS = { Origin: 'https://labs.strava.com', Referer: 'https://labs.strava.com/flyby/viewer/', Accept: 'application/json' };
+export type FlybySummary = { id: string; athleteId: string | null; startUtc: number | null; elapsedS: number | null; distanceM: number; name: string | null; activityType: string | null };
+
+export function summaryFromFlyby(body: unknown, id: string): FlybySummary | null {
+  const a = (body as { activity?: Record<string, unknown> })?.activity;
+  if (!a || String(a.id) !== id) return null;
+  const dist = Number(a.distance);
+  if (!Number.isFinite(dist) || dist <= 0) return null;
+  const num = (v: unknown) => (Number.isFinite(Number(v)) ? Number(v) : null);
+  return {
+    id,
+    athleteId: a.athleteId != null ? String(a.athleteId) : null,
+    startUtc: num(a.startTime),
+    elapsedS: num(a.elapsedTime),
+    distanceM: Math.round(dist),
+    name: typeof a.name === 'string' ? a.name : null,
+    activityType: typeof a.activityType === 'string' ? a.activityType : null,
+  };
+}
