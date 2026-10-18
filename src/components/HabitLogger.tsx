@@ -119,7 +119,7 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
   const atMost = h.dir === 'atMost';
   const isWeight = h.key === 'weigh-in';
   const [mode, setMode] = useState<'add' | 'edit'>(isWeight ? 'edit' : 'add');
-  const [amount, setAmount] = useState<string>(String(h.presets?.[1] ?? h.presets?.[0] ?? h.step ?? 1));
+  const [amount, setAmount] = useState<string>(String(h.presets?.[0] ?? h.step ?? 1));
   const [edit, setEdit] = useState<string>(value === null ? '' : String(value));
   const met = dayMet(h, target, value);
   const pct = target ? Math.min(100, (total / target) * 100) : 0;
@@ -130,9 +130,9 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
     const reached = !atMost && !met && dayMet(h, target, next);
     const over = atMost && next > target;
     commit(next, [...entries, n],
-      reached ? `Added ${fmtAmount(n, h.unit)} · daily goal reached!`
-        : over ? `Added ${fmtAmount(n, h.unit)} · ${fmtAmount(next, h.unit)} ${dayLabel}, over the limit`
-          : `Added ${fmtAmount(n, h.unit)} · ${fmtAmount(next, h.unit)} ${dayLabel}`);
+      reached ? `Saved +${fmtAmount(n, h.unit)} · daily goal reached!`
+        : over ? `Saved +${fmtAmount(n, h.unit)} · ${fmtAmount(next, h.unit)} ${dayLabel}, over the limit`
+          : `Saved +${fmtAmount(n, h.unit)} · ${fmtAmount(next, h.unit)} ${dayLabel}`);
   };
 
   return (
@@ -152,10 +152,12 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
 
       {mode === 'add' ? (
         <>
+          {/* Choose an amount first; nothing is saved until "Save" is tapped. */}
           {h.presets && h.presets.length ? (
-            <div className="preset-grid">
+            <div className="preset-grid" role="radiogroup" aria-label="Choose an amount">
               {h.presets.map((p) => (
-                <button key={p} className="preset" onClick={() => add(p)} disabled={busy} aria-label={`Add ${fmtAmount(p, h.unit)}`}>
+                <button key={p} type="button" role="radio" className="preset" aria-checked={parseFloat(amount) === p} aria-pressed={parseFloat(amount) === p}
+                  onClick={() => setAmount(String(p))} disabled={busy}>
                   <Icon name={h.key === 'water' ? 'drop' : 'plus'} />
                   +{fmtAmount(p)}
                   <small>{sizeLabel(h, p)}</small>
@@ -164,19 +166,22 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
             </div>
           ) : null}
           <div className="stack tight">
-            <span className="label">Or add a different amount</span>
+            <span className="label">{h.presets?.length ? 'Or choose a different amount' : 'Amount'}</span>
             <div className="stepper">
               <button type="button" aria-label="Less" onClick={() => setAmount((v) => String(Math.max(0, +(+v - (h.step ?? 1)).toFixed(2))))}><Icon name="minus" /></button>
               <input className="input" type="number" inputMode="decimal" aria-label={`Amount in ${h.unit}`} value={amount} min={0} onChange={(e) => setAmount(e.target.value)} />
               <button type="button" aria-label="More" onClick={() => setAmount((v) => String(+(+v + (h.step ?? 1)).toFixed(2)))}><Icon name="plus" /></button>
             </div>
+            {parseFloat(amount) > 0 ? (
+              <p className="small muted center-text">After saving: <span className="strong" style={{ color: 'var(--ink)' }}>{fmtAmount(+(total + parseFloat(amount)).toFixed(2), h.unit)}</span> {dayLabel}</p>
+            ) : null}
             <Button className="tint" loading={busy} onClick={() => add(parseFloat(amount))} disabled={!(parseFloat(amount) > 0)}>
-              Add {fmtAmount(parseFloat(amount) || 0, h.unit)}
+              Save +{fmtAmount(parseFloat(amount) || 0, h.unit)}
             </Button>
           </div>
           {atMost && value === null ? (
             <Button variant="secondary" loading={busy} onClick={() => commit(0, [], `Logged: none ${dayLabel}. Well done!`)}>
-              <Icon name="check" />None {dayLabel}
+              <Icon name="check" />Save: none {dayLabel}
             </Button>
           ) : null}
           {value !== null ? (
@@ -207,17 +212,24 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
 /* ---------- check: done / not done ---------- */
 
 function CheckLogger({ h, value, commit, busy }: { h: Habit; value: number | null; commit: Commit; busy: boolean }) {
+  // Pick an answer, then Save. Nothing is logged by the first tap.
+  const [pick, setPick] = useState<1 | 0 | null>(value === 1 ? 1 : value === 0 ? 0 : null);
+  const changed = pick !== null && pick !== value;
   return (
     <div className="stack">
       <p className="lead" style={{ color: 'var(--ink)', fontWeight: 600 }}>{h.ask ?? h.name}</p>
-      <div className="yn">
-        <button className="yes" aria-pressed={value === 1} disabled={busy} onClick={() => commit(1, [], 'Nice work! Logged as done.')}>
+      <div className="yn" role="radiogroup">
+        <button type="button" role="radio" className="yes" aria-checked={pick === 1} aria-pressed={pick === 1} disabled={busy} onClick={() => setPick(1)}>
           <Icon name="check" />Yes, done
         </button>
-        <button className="no" aria-pressed={value === 0} disabled={busy} onClick={() => commit(0, [], 'Logged. Every day is a fresh start.')}>
+        <button type="button" role="radio" className="no" aria-checked={pick === 0} aria-pressed={pick === 0} disabled={busy} onClick={() => setPick(0)}>
           <Icon name="x" />Not today
         </button>
       </div>
+      <Button className="tint" loading={busy} disabled={!changed}
+        onClick={() => pick !== null && commit(pick, [], pick === 1 ? 'Nice work! Logged as done.' : 'Logged. Every day is a fresh start.')}>
+        {value === null ? 'Save' : changed ? 'Update' : 'Saved'}
+      </Button>
       {value !== null ? <button className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => commit(null, [], 'Entry cleared')}>Clear this day</button> : null}
     </div>
   );

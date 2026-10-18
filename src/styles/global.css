@@ -600,7 +600,10 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 /* "New" on the Open to join tab */
 .new-badge { display: inline-block; margin-left: 4px; padding: 1px 6px; border-radius: 99px; background: var(--bad); color: #FFFFFF; font-size: 10px; font-weight: 800; letter-spacing: .02em; vertical-align: 2px; }
 
-/* iPhone Home Screen app: some iOS versions size the page shorter than the screen, which left a strip
-   under the tab bar. --vgap is that missing height (measured in lib/viewport.ts), so fixed bars reach the bottom. */
-.tabbar, .sheet { bottom: calc(-1 * var(--vgap, 0px)); }
-.page { padding-bottom: calc(var(--sab) + 96px - var(--vgap, 0px)); }
+/* iPhone Home Screen app (iOS 26, WebKit bug 301108): while the page is shorter than the screen, iOS makes
+   the viewport shorter by the status-bar height, so the fixed tab bar stopped above the bottom edge.
+   A page at least as tall as the screen gets the full viewport. Capped with 100lvh so it never scrolls. */
+@media (display-mode: standalone) {
+  html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
+}
+.preset[aria-pressed="true"] { border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 14%, var(--surface)); }
