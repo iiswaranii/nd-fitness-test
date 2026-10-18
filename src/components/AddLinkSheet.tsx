@@ -8,13 +8,11 @@ import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
 import { friendlyError } from '../lib/errors';
 import { addDays, fmtDay, fmtKm, today } from '../lib/dates';
-import { readStravaScreenshot } from '../lib/ocr';
 import { SPORTS, type Sport } from '../lib/types';
 
 /**
  * Paste a Strava activity link (Strava → activity → Share → Copy link).
- * Step 1 reads what Strava shows publicly. If the distance and time aren't public (activity not set to
- * Everyone), step 2 asks the member to type them from their Strava screen.
+ * Strava's public page gives the name, type and date; the member types distance and time from Strava.
  */
 export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { reload } = useStore();
@@ -30,13 +28,10 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
   const [mm, setMm] = useState('');
   const [sport, setSport] = useState<Sport>('walk');
   const [date, setDate] = useState(today());
-  const [ocrBusy, setOcrBusy] = useState(false);
-  const [ocrPct, setOcrPct] = useState(0);
-  const [ocrMsg, setOcrMsg] = useState<string | null>(null);
   const valid = !!parseStravaLink(url);
   const athlete = profile?.strava_connected ? profile.strava_athlete_name : null;
 
-  const reset = () => { setOcrMsg(null); setUrl(''); setPreview(null); setKm(''); setHh(''); setMm(''); setErr(null); setDate(today()); setSport('walk'); };
+  const reset = () => { setUrl(''); setPreview(null); setKm(''); setHh(''); setMm(''); setErr(null); setDate(today()); setSport('walk'); };
   const close = () => { reset(); onClose(); };
 
   const paste = async () => {
@@ -99,7 +94,7 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
             <button type="button" className="link-btn" style={{ alignSelf: 'center' }} onClick={() => setHelp((h) => !h)}>{help ? 'Hide help' : 'Link not working?'}</button>
             {help ? (
               <div className="card stack tight" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}>
-                <p className="small"><span className="strong">Fill in less by hand:</span> set the activity to <span className="strong">Everyone</span> in Strava (activity → ⋯ → Edit → Who can view). Then distance and time are read for you.</p>
+                <p className="small">Use <span className="strong">Share → Copy link</span> on the activity itself (not your profile). The activity must be visible to <span className="strong">Everyone</span> so we can read its name, type and date.</p>
                 <p className="small muted">Only walks, hikes, runs and rides count. Strava doesn’t share step counts.</p>
               </div>
             ) : null}
@@ -112,32 +107,9 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
             {preview.sport || preview.date || preview.athleteName ? (
               <p className="lead">{[preview.sportType, preview.date ? fmtDay(preview.date) : null, preview.athleteName].filter(Boolean).join(' · ')}</p>
             ) : null}
-            <p className="small muted">Strava doesn’t share distance and time publicly. Add a screenshot of this activity from Strava and we’ll read them for you.</p>
+            <p className="small muted">Strava no longer shows distance and time on shared links. Type them in exactly as your Strava activity shows them.</p>
           </div>
 
-          <label className={`shot-btn ${ocrBusy ? 'busy' : ''}`}>
-            <input type="file" accept="image/*" hidden disabled={ocrBusy || busy} onChange={async (e) => {
-              const file = e.target.files?.[0]; e.target.value = '';
-              if (!file) return;
-              setOcrBusy(true); setOcrPct(0); setErr(null); setOcrMsg(null);
-              try {
-                const r = await readStravaScreenshot(file, setOcrPct);
-                if (r.km) setKm(String(r.km));
-                if (r.seconds) { setHh(String(Math.floor(r.seconds / 3600))); setMm(String(Math.round((r.seconds % 3600) / 60))); }
-                setOcrMsg(r.km && r.seconds ? 'Filled from your screenshot. Check the numbers, then tap Add activity.'
-                  : r.km || r.seconds ? 'We could read part of it. Please fill in the rest.'
-                  : 'We couldn’t read the numbers. Try a screenshot that shows Distance and Time, or type them in.');
-              } catch { setOcrMsg('We couldn’t read that image. Please type the numbers in.'); }
-              finally { setOcrBusy(false); }
-            }} />
-            <span className="sp" style={{ ['--c' as string]: 'var(--strava)' }}><Icon name={ocrBusy ? 'sync' : 'camera'} /></span>
-            <span className="grow">
-              <span className="strong" style={{ display: 'block' }}>{ocrBusy ? `Reading screenshot… ${ocrPct ? ocrPct + '%' : ''}` : 'Add a Strava screenshot'}</span>
-              <span className="small muted">In Strava, open the activity and take a screenshot showing Distance and Time</span>
-            </span>
-          </label>
-          {ocrMsg ? <p className="notice">{ocrMsg}</p> : null}
-          <p className="small muted center-text" style={{ marginTop: -4 }}>or type them in</p>
 
           {!preview.sport ? (
             <div className="field">
