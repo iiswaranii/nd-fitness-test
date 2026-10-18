@@ -28,7 +28,6 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
   const [mm, setMm] = useState('');
   const [sport, setSport] = useState<Sport>('walk');
   const [date, setDate] = useState(today());
-  const valid = !!parseStravaLink(url);
   const athlete = profile?.strava_connected ? profile.strava_athlete_name : null;
 
   const reset = () => { setUrl(''); setPreview(null); setKm(''); setHh(''); setMm(''); setErr(null); setDate(today()); setSport('walk'); };
@@ -47,10 +46,10 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
     close();
   };
 
-  const submitLink = async () => {
-    if (!valid) { setErr('Paste a link like strava.app.link/… or strava.com/activities/…'); return; }
+  const submitLink = async (text = url) => {
+    if (!parseStravaLink(text)) { setErr('Paste a Strava link (strava.app.link/…) or the Embed code from Strava.'); return; }
     setBusy(true); setErr(null);
-    try { await done(await data.addActivityByLink(url)); }
+    try { await done(await data.addActivityByLink(text)); }
     catch (e) { setErr(friendlyError(e)); }
     finally { setBusy(false); }
   };
@@ -74,14 +73,14 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
         <>
           <div className="stack tight">
             <h2 className="h1" style={{ fontSize: 24 }}>Add from Strava</h2>
-            <p className="lead">In Strava, open your walk, run or ride, tap <span className="strong">Share → Copy link</span>, then paste it here.</p>
+            <p className="lead">Paste your activity’s <span className="strong">Embed code</span> to add distance and time automatically, or its <span className="strong">link</span> and type them in.</p>
           </div>
           <form className="stack" onSubmit={(e) => { e.preventDefault(); submitLink(); }}>
             <div className="field">
-              <label htmlFor="sl">Strava activity link</label>
+              <label htmlFor="sl">Embed code or link</label>
               <div className="input-wrap">
-                <input id="sl" className="input has-trail" type="url" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                  placeholder="https://strava.app.link/…" value={url} onChange={(e) => { setUrl(e.target.value); setErr(null); }} />
+                <input id="sl" className="input has-trail" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                  placeholder="<div class=&quot;strava-embed… or https://strava.app.link/…" value={url} onChange={(e) => { setUrl(e.target.value); setErr(null); }} />
                 <button type="button" className="trail-btn" onClick={paste} aria-label="Paste from clipboard"><Icon name="paste" /></button>
               </div>
             </div>
@@ -91,13 +90,8 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
               {athlete ? <>Activities by <span className="strong">{athlete}</span> on Strava count for you.</>
                 : <>Your first link connects your Strava name to your account. After that, only your own activities can be added.</>}
             </p>
-            <button type="button" className="link-btn" style={{ alignSelf: 'center' }} onClick={() => setHelp((h) => !h)}>{help ? 'Hide help' : 'Link not working?'}</button>
-            {help ? (
-              <div className="card stack tight" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}>
-                <p className="small">Use <span className="strong">Share → Copy link</span> on the activity itself (not your profile). The activity must be visible to <span className="strong">Everyone</span> so we can read its name, type and date.</p>
-                <p className="small muted">Only walks, hikes, runs and rides count. Strava doesn’t share step counts.</p>
-              </div>
-            ) : null}
+            <button type="button" className="link-btn" style={{ alignSelf: 'center' }} onClick={() => setHelp((h) => !h)}>{help ? 'Hide help' : 'How do I get the Embed code?'}</button>
+            {help ? <EmbedHelp /> : null}
           </form>
         </>
       ) : (
@@ -107,7 +101,12 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
             {preview.sport || preview.date || preview.athleteName ? (
               <p className="lead">{[preview.sportType, preview.date ? fmtDay(preview.date) : null, preview.athleteName].filter(Boolean).join(' · ')}</p>
             ) : null}
-            <p className="small muted">Strava no longer shows distance and time on shared links. Type them in exactly as your Strava activity shows them.</p>
+            <p className="small muted">Strava doesn’t share distance and time through a link. Type them in as Strava shows them, or paste the activity’s Embed code to fill them automatically.</p>
+            <Button type="button" variant="secondary" loading={busy} onClick={async () => {
+              try { const t = (await navigator.clipboard.readText()).trim(); if (!/data-token=/i.test(t)) { setErr('Copy the Embed code from Strava first (see below), then tap again.'); setHelp(true); return; } setUrl(t); setPreview(null); await submitLink(t); }
+              catch { setErr('Couldn’t read the clipboard. Tap Back and paste the Embed code in the box.'); }
+            }}>Paste Embed code instead</Button>
+            {help ? <EmbedHelp /> : null}
           </div>
 
 
@@ -156,5 +155,19 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
         </form>
       )}
     </Sheet>
+  );
+}
+
+function EmbedHelp() {
+  return (
+    <div className="card stack tight" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}>
+      <p className="small"><span className="strong">Get the Embed code</span> (once per activity):</p>
+      <ol className="small" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
+        <li>Open <span className="strong">strava.com</span> in your browser and log in (on iPhone: Safari → aA → Request Desktop Website).</li>
+        <li>Open the activity and tap the <span className="strong">Share</span> icon → <span className="strong">Embed</span>.</li>
+        <li>Copy the code and paste it here.</li>
+      </ol>
+      <p className="small muted">The activity and your Strava profile must be visible to Everyone. Only walks, hikes, runs and rides count.</p>
+    </div>
   );
 }
