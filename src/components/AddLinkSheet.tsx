@@ -110,10 +110,21 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
               <p className="lead">{[preview.sportType, preview.date ? fmtDay(preview.date) : null, preview.athleteName].filter(Boolean).join(' · ')}</p>
             ) : null}
             <p className="small muted">
-              {DEMO_AUTH ? 'Test mode can’t open Strava links. ' : 'Strava doesn’t show the distance and time of this activity publicly. '}
+              {DEMO_AUTH ? 'Test mode can’t open Strava links. ' : 'Strava isn’t sharing this activity’s distance and time publicly. '}
               Copy them from the activity in Strava:
             </p>
           </div>
+          {!DEMO_AUTH ? (
+            <details className="card" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}>
+              <summary className="small strong">Fill these in automatically next time</summary>
+              <div className="stack tight" style={{ marginTop: 8 }}>
+                <p className="small">In the Strava app: <span className="strong">You → ⚙︎ Settings → Privacy Controls</span></p>
+                <p className="small">• <span className="strong">Profile Page</span> → Everyone</p>
+                <p className="small">• <span className="strong">Activities</span> → Everyone</p>
+                <p className="small muted">Then open this activity → ⋯ → Edit → Who can view → Everyone, and add the link again.</p>
+              </div>
+            </details>
+          ) : null}
 
           {!preview.sport ? (
             <div className="field">
