@@ -37,7 +37,7 @@ export default defineConfig(({ mode }) => {
                 { src: base + 'icons/icon-maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
               ],
             },
-            workbox: { navigateFallback: base + 'index.html', navigateFallbackDenylist: [/^\/functions\//], importScripts: ['push-sw.js'] },
+            workbox: { globIgnores: ['ocr/**'], navigateFallback: base + 'index.html', navigateFallbackDenylist: [/^\/functions\//], importScripts: ['push-sw.js'] },
           }),
     ],
     resolve: single ? { alias: { 'virtual:pwa-register': '/src/lib/pwa-stub.ts' } } : undefined,

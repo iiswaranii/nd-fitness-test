@@ -607,3 +607,9 @@ button.hrow > .ic { color: var(--muted); flex: none; }
   html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
 }
 .preset[aria-pressed="true"] { border: 2px solid var(--c); background: color-mix(in srgb, var(--c) 14%, var(--surface)); }
+
+/* "Add a Strava screenshot" */
+.shot-btn { display: flex; gap: 12px; align-items: center; padding: 14px; border-radius: 18px; border: 1.5px dashed color-mix(in srgb, var(--strava) 55%, transparent); background: color-mix(in srgb, var(--strava) 6%, var(--surface)); cursor: pointer; text-align: left; }
+.shot-btn.busy { opacity: .75; cursor: progress; }
+.shot-btn.busy .sp .ic { animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
