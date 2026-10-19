@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { daysLeft, goalText, progress } from '../lib/progress';
+import { dayOf, goalText, progress, status, totalDays } from '../lib/progress';
 import { fmtRange } from '../lib/dates';
 import { Sheet } from './Sheet';
 import { Button, ErrorText } from './Form';
@@ -303,7 +303,6 @@ function ChallengeInfo({ c, onClose }: { c: Challenge; onClose: () => void }) {
   const nav = useNavigate();
   const { activities, logs } = useStore();
   const p = progress(c, activities, logs);
-  const left = daysLeft(c);
   return (
     <section className="stack tight" style={{ borderTop: '1px solid var(--line)', paddingTop: 16 }}>
       <p className="eyebrow">About this challenge</p>
@@ -313,7 +312,7 @@ function ChallengeInfo({ c, onClose }: { c: Challenge; onClose: () => void }) {
         <div><div className="k">Goal</div><div className="v">{goalText(c)}</div></div>
         <div><div className="k">Dates</div><div className="v">{fmtRange(c.start_date, c.end_date)}</div></div>
         <div><div className="k">Your progress</div><div className="v">{Math.round(p.pct)}%{p.done ? ' · done' : ''}</div></div>
-        <div><div className="k">Days left</div><div className="v">{left > 0 ? left : 'Finished'}</div></div>
+        <div><div className="k">Day</div><div className="v">{status(c) === 'finished' ? 'Finished' : status(c) === 'upcoming' ? 'Not started' : `${dayOf(c)} of ${totalDays(c)}`}</div></div>
       </div>
       <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => { onClose(); nav(`/c/${c.id}`); }}>
         See full challenge and leaderboard

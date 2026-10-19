@@ -11,7 +11,7 @@ import { HabitLogger } from '../components/HabitLogger';
 import { useSession } from '../lib/session';
 import { data } from '../lib/data';
 import { useStore } from '../lib/store';
-import { canJoin, daysLeft, fmtValue, progress, status, unitOf } from '../lib/progress';
+import { canJoin, dayOf, dayText, fmtValue, progress, status, totalDays, unitOf } from '../lib/progress';
 import { dayMet, fmtAmount, fmtClock, habitByKey } from '../lib/habits';
 import { lookOf } from '../lib/look';
 import { longDay, relDay, today } from '../lib/dates';
@@ -226,7 +226,7 @@ function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge
     const centre = h.kind === 'amount' && h.dir !== 'atMost' && h.key !== 'weigh-in' ? `${Math.floor(todayPct)}%` : p.todayMet ? '✓' : tv === null ? '—' : '✕';
     const todayText = tv === null ? 'Not logged yet' : h.kind === 'amount' ? fmtAmount(tv, h.unit) : h.kind === 'time' ? fmtClock(tv) : tv ? 'Done' : 'Not today';
     return (
-      <button className="card hero" onClick={() => onOpenHabit(c)} aria-label={`${c.title}: today ${todayText}, ${p.value} of ${c.target} days`}>
+      <button className="card hero" onClick={() => onOpenHabit(c)} aria-label={`${c.title}: today ${todayText}, ${dayText(c)}, ${p.value} of ${c.target} days done`}>
         <Rings rings={[{ pct: todayPct, color: look.color }, { pct: p.pct, color: 'var(--today)' }]} size={136} label={`Today ${Math.round(todayPct)}%`}>
           <b>{centre}</b><span>today</span>
         </Rings>
@@ -239,8 +239,8 @@ function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge
           </div>
           <div>
             <div className="lg-t"><span className="dotc" style={{ background: 'var(--today)' }} /><span>{c.title}</span></div>
-            <div className="lg-v" style={{ fontSize: 18 }}>{p.value}<small>/ {c.target} days</small></div>
-            <div className="lg-s">{p.done ? 'Challenge complete' : `${daysLeft(c)} days left`}</div>
+            <div className="lg-v" style={{ fontSize: 18 }}>Day {dayOf(c)}<small>/ {totalDays(c)}</small></div>
+            <div className="lg-s">{p.done ? 'Challenge complete' : `${p.value} of ${c.target} days done`}</div>
           </div>
         </div>
       </button>
@@ -258,7 +258,7 @@ function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge
         <div>
           <div className="lg-t"><span className="dotc" style={{ background: look.color }} /><span>{c.title}</span></div>
           <div className="lg-v">{fmtValue(c, p.value)}<small>/ {c.target} {unitOf(c)}</small></div>
-          <div className="lg-s">{p.done ? 'Goal complete' : `${daysLeft(c)} days left`}</div>
+          <div className="lg-s">{p.done ? 'Goal complete' : dayText(c)}</div>
         </div>
         {c.my_daily_target ? (
           <div>

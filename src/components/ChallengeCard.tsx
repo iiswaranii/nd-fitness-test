@@ -1,10 +1,11 @@
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { Bar } from './Ring';
 import { useStore } from '../lib/store';
 import { lookOf } from '../lib/look';
 import { audienceText, hasAudience } from '../lib/audience';
-import { canJoin, daysLeft, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
+import { canJoin, dayText, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
 import { fmtDay, fmtRange } from '../lib/dates';
 import type { Challenge } from '../lib/types';
 
@@ -38,7 +39,7 @@ export function ChallengeCard({ c }: { c: Challenge }) {
           <Bar pct={p.pct} color={look.color} />
           <div className="cc-n">
             <span><b>{fmtValue(c, p.value)}</b> <span className="muted">/ {c.target} {unitOf(c)}</span></span>
-            <span className="muted">{p.done ? 'Goal complete' : st === 'active' ? `${daysLeft(c)} days left` : st === 'finished' ? 'Ended' : ''}</span>
+            <span className="muted">{p.done ? 'Goal complete' : st === 'active' ? dayText(c) : st === 'finished' ? 'Ended' : ''}</span>
           </div>
         </>
       ) : (
@@ -51,13 +52,26 @@ export function ChallengeCard({ c }: { c: Challenge }) {
 /** Card for a challenge the member can join (or will be able to soon). Tinted, with a big Join button. */
 export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) => void }) {
   const nav = useNavigate();
-  const { newIds } = useStore();
-  const isNew = newIds.has(c.id);
+  const { newIds, markSeen } = useStore();
+  // Keep the badge for this visit, but count the challenge as seen once it has been on screen for a moment.
+  const [isNew] = useState(() => newIds.has(c.id));
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!isNew || !el || typeof IntersectionObserver === 'undefined') return;
+    let t: ReturnType<typeof setTimeout> | undefined;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting) t = setTimeout(() => { markSeen(c.id); io.disconnect(); }, 1200);
+      else if (t) clearTimeout(t);
+    }, { threshold: 0.6 });
+    io.observe(el);
+    return () => { io.disconnect(); if (t) clearTimeout(t); };
+  }, [isNew, c.id, markSeen]);
   const look = lookOf(c);
   const st = status(c);
   const can = canJoin(c);
   return (
-    <div className={`card cc open ${isNew ? 'is-new' : ''}`} style={{ ['--c' as string]: look.color }}>
+    <div ref={ref} className={`card cc open ${isNew ? 'is-new' : ''}`} style={{ ['--c' as string]: look.color }}>
       <button className="cc-top" style={{ background: 'none', border: 0, padding: 0, textAlign: 'left', width: '100%' }} onClick={() => nav(`/c/${c.id}`)}>
         <span className="sp"><Icon name={look.icon} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
@@ -76,7 +90,7 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
         </span>
       </div>
       {can ? (
-        <button className="btn tint" onClick={() => onJoin(c)}><Icon name="plus" />Join challenge</button>
+        <button className="btn tint" onClick={() => { markSeen(c.id); onJoin(c); }}><Icon name="plus" />Join challenge</button>
       ) : !regOpen(c) && st !== 'finished' ? (
         <button className="btn ghost" onClick={() => nav(`/c/${c.id}`)}><Icon name="cal" />Registration opens {fmtDay(c.reg_opens)}</button>
       ) : null}

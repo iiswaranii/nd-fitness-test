@@ -17,7 +17,7 @@ import { useStore } from '../lib/store';
 import { data } from '../lib/data';
 import { lookOf } from '../lib/look';
 import { audienceText, hasAudience } from '../lib/audience';
-import { canJoin, challengeDays, daysLeft, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
+import { canJoin, challengeDays, dayText, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
 import { addDays, fmtDay, fmtKm, fmtDur, fmtRange, longDay, parse, relDay, today } from '../lib/dates';
 import { dayMet, habitByKey, habitGoalText } from '../lib/habits';
 import { friendlyError } from '../lib/errors';
@@ -79,7 +79,7 @@ export default function ChallengeDetail() {
                 <div className="lg-t">{p.done ? 'Result' : 'Remaining'}</div>
                 <div className="lg-v" style={{ fontSize: 18 }}>{p.done ? 'Goal complete' : <>{fmtValue(c, p.remaining)}<small>{unitOf(c)}</small></>}</div>
                 {st === 'active' && !p.done ? (
-                  <div className="lg-s">{daysLeft(c)} days left · <span style={{ color: p.onTrack ? 'var(--good)' : 'var(--warn)', fontWeight: 700 }}>{p.onTrack ? 'On track' : 'Time to catch up'}</span></div>
+                  <div className="lg-s">{dayText(c)} · <span style={{ color: p.onTrack ? 'var(--good)' : 'var(--warn)', fontWeight: 700 }}>{p.onTrack ? 'On track' : 'Time to catch up'}</span></div>
                 ) : null}
               </div>
             </div>

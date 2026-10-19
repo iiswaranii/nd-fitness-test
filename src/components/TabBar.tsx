@@ -1,12 +1,11 @@
 import { NavLink } from 'react-router-dom';
 import { Icon } from './Icon';
 import { useStore } from '../lib/store';
-import { canJoin } from '../lib/progress';
 
 export function TabBar() {
-  const { isAdmin, challenges } = useStore();
-  // Red count = live challenges still open to join. Joining one lowers it; at zero it disappears.
-  const openCount = challenges.filter(canJoin).length;
+  const { isAdmin, newIds } = useStore();
+  // Red count = new challenges the member hasn't looked at yet. Seeing them (or joining) clears it.
+  const openCount = newIds.size;
   const tabs = [
     { to: '/', label: 'Today', icon: 'home', end: true },
     { to: '/challenges', label: 'Challenges', icon: 'trophy', badge: openCount },
@@ -20,7 +19,7 @@ export function TabBar() {
         <NavLink key={t.to} to={t.to} end={t.end} className="tab">
           <Icon name={t.icon} />
           <span>{t.label}</span>
-          {'badge' in t && t.badge ? <span className="tab-badge" aria-label={`${t.badge} open to join`}>{t.badge}</span> : null}
+          {'badge' in t && t.badge ? <span className="tab-badge" aria-label={`${t.badge} new`}>{t.badge}</span> : null}
         </NavLink>
       ))}
     </nav>
