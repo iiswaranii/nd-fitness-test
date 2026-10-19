@@ -8,13 +8,13 @@ import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
 import { friendlyError } from '../lib/errors';
 import { addDays, fmtDay, fmtKm, today } from '../lib/dates';
-import { SPORTS, type Sport } from '../lib/types';
+import { SPORTS, type Challenge, type Sport } from '../lib/types';
 
 /**
  * Paste a Strava activity link (Strava → activity → Share → Copy link).
  * Strava's public page gives the name, type and date; the member types distance and time from Strava.
  */
-export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; onClose: () => void; forChallenge?: Challenge | null }) {
   const { reload } = useStore();
   const { profile, refreshProfile } = useSession();
   const toast = useToast();
@@ -43,7 +43,7 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
     if (r.needsStats) {
       const p = r.preview;
       setPreview(p);
-      if (p.sport) setSport(p.sport);
+      if (p.sport) setSport(p.sport); else if (forChallenge?.sport) setSport(forChallenge.sport);
       if (p.date) setDate(p.date);
       setKm(p.km ? String(p.km) : '');
       if (p.seconds) { const t = Math.round(p.seconds); setHh(String(Math.floor(t / 3600))); setMm(String(Math.floor((t % 3600) / 60))); setSs(String(t % 60)); } else { setHh(''); setMm(''); setSs(''); }
@@ -86,6 +86,7 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
         <>
           <div className="stack tight">
             <h2 className="h1" style={{ fontSize: 24 }}>Add from Strava</h2>
+            {forChallenge ? <p className="small strong" style={{ color: 'var(--strava)' }}>For {forChallenge.title}</p> : null}
             <p className="lead">In Strava, open your walk, run or ride, tap <span className="strong">Share → Copy link</span>, then paste it here. We fill in the details for you to check.</p>
           </div>
           <form className="stack" onSubmit={(e) => { e.preventDefault(); submitLink(); }}>
@@ -124,7 +125,9 @@ export function AddLinkSheet({ open, onClose }: { open: boolean; onClose: () => 
               <p className="small muted">We couldn’t measure this activity’s route (for example a treadmill walk). Type the distance and time as Strava shows them.</p>
             )}
           </div>
-
+          {forChallenge?.sport && sport !== forChallenge.sport ? (
+            <p className="notice">This is a {SPORTS[sport].verb.toLowerCase()}, so it won’t count toward {forChallenge.title}. It still counts for any {SPORTS[sport].verb.toLowerCase()} challenge you’ve joined.</p>
+          ) : null}
 
             <div className="field">
               <label>Type</label>

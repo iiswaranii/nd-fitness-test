@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon';
 import { Rings } from '../components/Ring';
 import { StatusPill } from '../components/ChallengeCard';
 import { JoinSheet } from '../components/JoinSheet';
+import { AddLinkSheet } from '../components/AddLinkSheet';
 import { EDIT_DAYS, HabitLogger } from '../components/HabitLogger';
 import { Picker } from '../components/Picker';
 import { REMINDER_TIMES, enablePush, pushState } from '../lib/push';
@@ -35,6 +36,7 @@ export default function ChallengeDetail() {
   const refresh = useCallback(async () => { await reload(); setTick((t) => t + 1); }, [reload]);
   const [join, setJoin] = useState(false);
   const [log, setLog] = useState(false);
+  const [addLink, setAddLink] = useState(false);
   const [leave, setLeave] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -88,6 +90,9 @@ export default function ChallengeDetail() {
 
         {c.joined && c.category === 'habit' && h && st === 'active' ? (
           <Button className="tint" onClick={() => setLog(true)}><Icon name="plus" />Log or edit a day</Button>
+        ) : null}
+        {c.joined && c.category === 'activity' && st === 'active' ? (
+          <Button className="tint" onClick={() => setAddLink(true)}><Icon name="link" />Add a {c.sport === 'run' ? 'run' : c.sport === 'ride' ? 'ride' : 'walk'} from Strava</Button>
         ) : null}
 
         {p && c.category === 'habit' && h ? (
@@ -205,6 +210,7 @@ export default function ChallengeDetail() {
 
       <JoinSheet c={join ? c : null} onClose={() => setJoin(false)} />
       <HabitLogger c={c} open={log} onClose={() => setLog(false)} />
+      <AddLinkSheet open={addLink} forChallenge={c} onClose={() => setAddLink(false)} />
       <Sheet open={leave} onClose={() => setLeave(false)} label="Leave challenge">
         <h2 className="h1" style={{ fontSize: 24 }}>Leave this challenge?</h2>
         <p className="lead">{c.category === 'habit' ? 'Your logged days for this challenge will be removed.' : 'Your activities stay in the app, but they’ll stop counting here.'}</p>

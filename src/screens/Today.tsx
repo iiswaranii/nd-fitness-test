@@ -22,7 +22,7 @@ export default function Today() {
   const { user, profile } = useSession();
   const { challenges, activities, logs, loading, error, reload, isAdmin } = useStore();
   const name = profile?.full_name || user?.name || 'there';
-  const [addLink, setAddLink] = useState(false);
+  const [addFor, setAddFor] = useState<Challenge | null>(null);
   const [logFor, setLogFor] = useState<Challenge | null>(null);
   const [noDob, setNoDob] = useState(false);
   useEffect(() => { data.getHealth().then((h) => setNoDob(!h?.dob)).catch(() => {}); }, []);
@@ -32,8 +32,7 @@ export default function Today() {
   const heroes = [...active].sort((a, b) => (a.category === b.category ? 0 : a.category === 'activity' ? -1 : 1));
   const habits = active.filter((c) => c.category === 'habit');
   const openN = challenges.filter(canJoin).length;
-  const hasExercise = active.some((c) => c.category === 'activity');
-  const addedToday = activities.some((a) => a.date === today());
+  const exercise = active.filter((c) => c.category === 'activity');
 
   const refresh = useCallback(async () => { await reload(); }, [reload]);
 
@@ -85,21 +84,11 @@ export default function Today() {
             </div>
           ) : null}
 
-          {hasExercise ? (
-            <button className="card row" style={{ gap: 12, textAlign: 'left', width: '100%' }} onClick={() => setAddLink(true)}>
-              <span className="sp" style={{ ['--c' as string]: 'var(--strava)' }}><Icon name="link" /></span>
-              <span className="grow" style={{ minWidth: 0 }}>
-                <span className="strong" style={{ display: 'block' }}>{addedToday ? 'Another walk, run or ride?' : 'Walked, ran or rode today?'}</span>
-                <span className="small muted">Paste the Strava link to count it</span>
-              </span>
-              <Icon name="plus" />
-            </button>
-          ) : null}
-
-          {habits.length ? (
+          {exercise.length || habits.length ? (
             <section className="sec">
-              <div className="sec-h"><h2 className="h2">Today’s habits</h2><span className="small muted">Tap a habit to log</span></div>
+              <div className="sec-h"><h2 className="h2">Today’s log</h2><span className="small muted">Tap to log</span></div>
               <div className="list">
+                {exercise.map((c) => <ExerciseRow key={c.id} c={c} onOpen={() => setAddFor(c)} />)}
                 {habits.map((c) => (
                   <HabitRow key={c.id} c={c} onOpen={() => setLogFor(c)} logValue={logs.find((l) => l.challenge_id === c.id && l.date === today())} />
                 ))}
@@ -136,8 +125,32 @@ export default function Today() {
       </PullToRefresh>
 
       <HabitLogger c={logFor} open={!!logFor} onClose={() => setLogFor(null)} />
-      <AddLinkSheet open={addLink} onClose={() => setAddLink(false)} />
+      <AddLinkSheet open={!!addFor} forChallenge={addFor} onClose={() => setAddFor(null)} />
     </Page>
+  );
+}
+
+/** A walking / running / cycling challenge in today's log. Tapping opens "Add from Strava". */
+function ExerciseRow({ c, onOpen }: { c: Challenge; onOpen: () => void }) {
+  const { activities } = useStore();
+  const look = lookOf(c);
+  const km = activities.filter((a) => a.sport === c.sport && a.date === today()).reduce((s, a) => s + a.km, 0);
+  const n = activities.filter((a) => a.sport === c.sport && a.date === today()).length;
+  const goal = c.my_daily_target;
+  const met = goal ? km >= goal - 1e-9 : n > 0;
+  const verb = c.sport === 'run' ? 'run' : c.sport === 'ride' ? 'ride' : 'walk';
+  const status = n === 0
+    ? `No ${verb} added yet · tap to add from Strava`
+    : `${km.toFixed(1)} km today${goal ? ` of ${goal} km` : ''} · tap to add another`;
+  return (
+    <button className="hrow" style={{ ['--c' as string]: look.color, width: '100%', textAlign: 'left' }} onClick={onOpen} aria-label={`${c.title}: ${status}`}>
+      <span className="sp"><Icon name={look.icon} /></span>
+      <span className="grow" style={{ minWidth: 0 }}>
+        <span className="t" style={{ display: 'block' }}>{c.title}</span>
+        <span className="s" style={{ color: met ? 'var(--good)' : undefined, fontWeight: met ? 700 : undefined }}>{met ? '✓ ' : ''}{status}</span>
+      </span>
+      {met ? <span className="check-ring" aria-hidden="true" data-on="true"><Icon name="check" /></span> : <Icon name="plus" />}
+    </button>
   );
 }
 
