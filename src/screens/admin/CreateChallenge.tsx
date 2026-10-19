@@ -261,7 +261,7 @@ export default function CreateChallenge() {
 }
 
 function PreviewCard({ c }: { c: NewChallenge }) {
-  const full = { ...c, id: 'preview', cancelled: false, created_at: '', member_count: 0, joined: false, my_daily_target: null, my_reminder: null };
+  const full = { ...c, id: 'preview', cancelled: false, created_at: '', member_count: 0, joined: false, my_daily_target: null, my_reminder: null, eligible: true };
   const look = lookOf(full);
   const h = habitByKey(c.habit_key);
   return (

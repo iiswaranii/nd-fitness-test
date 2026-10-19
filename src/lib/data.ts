@@ -99,7 +99,7 @@ const supabaseData: DataApi = {
   async listChallenges() {
     const me = await uid();
     const [{ data: cs, error }, { data: counts }, { data: mine }] = await Promise.all([
-      sb().from('challenges').select('*').order('start_date', { ascending: false }),
+      sb().from('challenges').select('*, eligible:member_can_see').order('start_date', { ascending: false }),
       sb().rpc('challenge_member_counts'),
       sb().from('challenge_members').select('challenge_id, daily_target, reminder_time').eq('user_id', me),
     ]);
@@ -110,6 +110,7 @@ const supabaseData: DataApi = {
       ...c,
       target: Number(c.target), daily_min: c.daily_min === null ? null : Number(c.daily_min), min_km: c.min_km === null ? null : Number(c.min_km),
       daily_target: c.daily_target === null ? null : Number(c.daily_target),
+      eligible: c.eligible !== false,
       member_count: Number(cnt.get(c.id) ?? 0), joined: my.has(c.id), my_daily_target: my.get(c.id)?.daily_target ?? null, my_reminder: my.get(c.id)?.reminder_time?.slice(0, 5) ?? null,
     })) as Challenge[];
   },
@@ -251,7 +252,7 @@ const supabaseData: DataApi = {
 const DK = 'ndf-data-v4';
 type DemoMember = { user_id: string; name: string; city: string; daily_target: number | null; joined_at: string; reminder?: string | null };
 type DemoState = {
-  challenges: (Omit<Challenge, 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder'>)[];
+  challenges: (Omit<Challenge, 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'eligible'>)[];
   members: Record<string, DemoMember[]>;
   activities: Record<string, Activity[]>;
   logs: Record<string, HabitLog[]>;
@@ -282,13 +283,12 @@ const demoData: DataApi = {
   async listChallenges() {
     const s = load(), m = await me();
     const who = { dob: s.health?.[m.id]?.dob ?? null, country: m.country, state: m.state };
-    // Members only see challenges meant for them (or ones they already joined). Admins see everything.
+    // Everyone sees every challenge; only members in the audience can join.
     return s.challenges
-      .filter((c) => m.admin || matches(c as Challenge, who) || (s.members[c.id] ?? []).some((x) => x.user_id === m.id))
       .map((c) => {
       const ms = s.members[c.id] ?? [];
       const mine = ms.find((x) => x.user_id === m.id);
-      return { ...c, member_count: ms.length, joined: !!mine, my_daily_target: mine?.daily_target ?? null, my_reminder: mine?.reminder ?? null };
+      return { ...c, eligible: matches(c as Challenge, who), member_count: ms.length, joined: !!mine, my_daily_target: mine?.daily_target ?? null, my_reminder: mine?.reminder ?? null };
     }).sort((a, b) => b.start_date.localeCompare(a.start_date));
   },
   async createChallenge(c) {

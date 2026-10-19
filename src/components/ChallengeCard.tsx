@@ -82,14 +82,17 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
       </button>
       <p className="small" style={{ color: 'var(--ink-2)' }}>{goalText(c)}</p>
       {hasAudience(c) ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="users" />Specially for {audienceText(c)}</span> : null}
+      {!c.eligible ? <p className="small muted">This one is only for {audienceText(c)}. You can follow along and see the leaderboard, but you can’t join.</p> : null}
       <div className="meta">
         <Icon name="users" className="ic" />
         <span className="strong" style={{ fontSize: 13.5 }}>{c.member_count ? `${c.member_count} joined` : 'Be the first to join'}</span>
         <span className="muted" style={{ marginLeft: 'auto', fontWeight: 600 }}>
-          {can ? `Join by ${fmtDay(c.join_by)}` : !regOpen(c) ? `Starts ${fmtDay(c.start_date)}` : 'Enrolment closed'}
+          {!c.eligible ? 'View only' : can ? `Join by ${fmtDay(c.join_by)}` : !regOpen(c) ? `Starts ${fmtDay(c.start_date)}` : 'Enrolment closed'}
         </span>
       </div>
-      {can ? (
+      {!c.eligible ? (
+        <button className="btn ghost" onClick={() => nav(`/c/${c.id}`)}><Icon name="eye" />View challenge</button>
+      ) : can ? (
         <button className="btn tint" onClick={() => { markSeen(c.id); onJoin(c); }}><Icon name="plus" />Join challenge</button>
       ) : !regOpen(c) && st !== 'finished' ? (
         <button className="btn ghost" onClick={() => nav(`/c/${c.id}`)}><Icon name="cal" />Registration opens {fmtDay(c.reg_opens)}</button>

@@ -14,7 +14,7 @@ export function status(c: Challenge): Status {
 
 export const regOpen = (c: Challenge) => today() >= c.reg_opens;
 export const canJoin = (c: Challenge) =>
-  !c.joined && (status(c) === 'active' || status(c) === 'upcoming') && regOpen(c) && today() <= c.join_by;
+  !c.joined && c.eligible !== false && (status(c) === 'active' || status(c) === 'upcoming') && regOpen(c) && today() <= c.join_by;
 export const daysLeft = (c: Challenge) => diffDays(today(), c.end_date) + 1;
 export const totalDays = (c: Challenge) => diffDays(c.start_date, c.end_date) + 1;
 /** Which day of the challenge today is (1-based), clamped to the challenge's length. */

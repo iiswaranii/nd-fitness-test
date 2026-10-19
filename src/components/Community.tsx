@@ -46,8 +46,8 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
         <div className="row" style={{ gap: 12 }}>
           <span className="sp"><Icon name="heart" /></span>
           <div style={{ minWidth: 0 }}>
-            <h2 className="h2">You’re already a winner</h2>
-            <p className="small muted">Taking part is what counts. Every day you show up is a win.</p>
+            <h2 className="h2">{me ? 'You’re already a winner' : 'How the group is doing'}</h2>
+            <p className="small muted">{me ? 'Taking part is what counts. Every day you show up is a win.' : 'Taking part is what counts here. Every day members show up is a win.'}</p>
           </div>
         </div>
         <div className="stat3">
@@ -56,7 +56,7 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
           <div><div className="k">Group wins</div><div className="v">{g.groupDays}</div></div>
         </div>
         <p className="small" style={{ color: 'var(--ink-2)' }}>
-          {g.loggedToday >= 2 ? `${g.loggedToday} members have already logged today. Join them!` : 'Be one of the first to log today and set the tone for everyone.'}
+          {!me ? `${g.loggedToday} ${g.loggedToday === 1 ? 'member has' : 'members have'} logged today.` : g.loggedToday >= 2 ? `${g.loggedToday} members have already logged today. Join them!` : 'Be one of the first to log today and set the tone for everyone.'}
         </p>
       </section>
     );

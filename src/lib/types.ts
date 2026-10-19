@@ -34,9 +34,11 @@ export type Challenge = {
   my_daily_target: number | null;
   /** Daily reminder time for this member, "HH:MM" in their own time zone, or null for none. */
   my_reminder: string | null;
+  /** The signed-in member fits the audience (age group, country, state) and may join. Everyone can view. */
+  eligible: boolean;
 };
 
-export type NewChallenge = Omit<Challenge, 'id' | 'created_at' | 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'cancelled'>;
+export type NewChallenge = Omit<Challenge, 'id' | 'created_at' | 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'cancelled' | 'eligible'>;
 
 export type Activity = {
   id: string; // Strava activity id

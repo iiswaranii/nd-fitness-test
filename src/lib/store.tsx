@@ -47,7 +47,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const newIds = useMemo(() => {
     const cutoff = Date.now() - NEW_FOR_DAYS * 864e5;
     const t = new Date(); const td = `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-    return new Set(challenges.filter((c) => !c.joined && !c.cancelled && c.end_date >= td && new Date(c.created_at).getTime() > cutoff && !seen.includes(c.id)).map((c) => c.id));
+    return new Set(challenges.filter((c) => !c.joined && c.eligible !== false && !c.cancelled && c.end_date >= td && new Date(c.created_at).getTime() > cutoff && !seen.includes(c.id)).map((c) => c.id));
   }, [challenges, seen]);
 
   const reload = useCallback(async () => {

@@ -28,7 +28,7 @@ export default function ChallengeDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
-  const { challenges, activities, logs, reload, loading, markSeen, isAdmin } = useStore();
+  const { challenges, activities, logs, reload, loading, markSeen } = useStore();
   const c = challenges.find((x) => x.id === id);
   useEffect(() => { if (c) markSeen(c.id); }, [c, markSeen]);
   const [tick, setTick] = useState(0);
@@ -143,7 +143,7 @@ export default function ChallengeDetail() {
           </section>
         ) : null}
 
-        {(c.joined || isAdmin) && st !== 'upcoming' && st !== 'cancelled' ? <Community c={c} refreshKey={tick} /> : null}
+        {st !== 'upcoming' && st !== 'cancelled' ? <Community c={c} refreshKey={tick} /> : null}
 
         <div className="kv">
           <div className="wide"><div className="k">Goal</div><div className="v">{goalText(c)}</div></div>
@@ -180,6 +180,14 @@ export default function ChallengeDetail() {
         {st === 'active' || st === 'upcoming' ? (
           c.joined ? (
             <Button variant="ghost" onClick={() => setLeave(true)}>Leave challenge</Button>
+          ) : !c.eligible ? (
+            <div className="card row" style={{ gap: 12, ['--c' as string]: 'var(--ink-2)' }}>
+              <span className="sp"><Icon name="eye" /></span>
+              <span className="grow" style={{ minWidth: 0 }}>
+                <span className="strong" style={{ display: 'block' }}>View only · for {audienceText(c)}</span>
+                <span className="small muted">You can follow this challenge and its leaderboard, but only members in this group can join. If your details are wrong, update your birthday, country or state in Profile.</span>
+              </span>
+            </div>
           ) : canJoin(c) ? (
             <Button className="tint" onClick={() => setJoin(true)}><Icon name="plus" />Join challenge</Button>
           ) : !regOpen(c) ? (
