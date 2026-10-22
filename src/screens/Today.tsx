@@ -170,15 +170,21 @@ function HabitRow({ c, logValue, onOpen }: {
     : h.kind === 'time' ? `${fmtClock(v)} · goal ${fmtClock(target)}`
     : v ? 'Done' : 'Not today';
 
+  // Logged, but the day's goal wasn't reached (e.g. “Not today”, a late bedtime, over the limit).
+  // A growing amount (water, steps…) is still in progress today, so only finished answers can be “missed”.
+  const growing = h.kind === 'amount' && h.dir !== 'atMost' && h.key !== 'weigh-in';
+  const missed = v !== null && !met && !growing;
+
   // One tap target: opening the habit is the only way to log, so nothing is logged by accident.
   return (
-    <button className="hrow" style={{ ['--c' as string]: look.color, width: '100%', textAlign: 'left' }} onClick={onOpen} aria-label={`${h.name}: ${status}`}>
+    <button className={`hrow${missed ? ' missed' : ''}`} style={{ ['--c' as string]: look.color, width: '100%', textAlign: 'left' }} onClick={onOpen} aria-label={`${h.name}: ${status}${missed ? ', goal not met today' : ''}`}>
       <span className="sp"><Icon name={look.icon} /></span>
       <span className="grow" style={{ minWidth: 0 }}>
         <span className="t" style={{ display: 'block' }}>{h.name}</span>
-        <span className="s" style={{ color: met ? 'var(--good)' : undefined, fontWeight: met ? 700 : undefined }}>{met ? '✓ ' : ''}{status}</span>
+        <span className="s" style={{ color: met ? 'var(--good)' : missed ? 'var(--bad)' : undefined, fontWeight: met || missed ? 700 : undefined }}>{met ? '✓ ' : missed ? '✕ ' : ''}{status}</span>
       </span>
-      {met ? <span className="check-ring" aria-hidden="true" data-on="true"><Icon name="check" /></span> : <Icon name="chev" />}
+      {met ? <span className="check-ring" aria-hidden="true" data-on="true"><Icon name="check" /></span>
+        : missed ? <span className="check-ring miss" aria-hidden="true"><Icon name="x" /></span> : <Icon name="chev" />}
     </button>
   );
 }
@@ -238,17 +244,21 @@ function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge
       : p.todayMet ? 100 : 0;
     const centre = h.kind === 'amount' && h.dir !== 'atMost' && h.key !== 'weigh-in' ? `${Math.floor(todayPct)}%` : p.todayMet ? '✓' : tv === null ? '—' : '✕';
     const todayText = tv === null ? 'Not logged yet' : h.kind === 'amount' ? fmtAmount(tv, h.unit) : h.kind === 'time' ? fmtClock(tv) : tv ? 'Done' : 'Not today';
+    // Logged but not achieved today: the today ring and its centre turn red.
+    const growing = h.kind === 'amount' && h.dir !== 'atMost' && h.key !== 'weigh-in';
+    const missedToday = tv !== null && !p.todayMet && !growing;
+    const todayRing = missedToday ? { pct: 100, color: 'var(--bad)' } : { pct: todayPct, color: look.color };
     return (
-      <button className="card hero" onClick={() => onOpenHabit(c)} aria-label={`${c.title}: today ${todayText}, ${dayText(c)}, ${p.value} of ${c.target} days done`}>
-        <Rings rings={[{ pct: todayPct, color: look.color }, { pct: p.pct, color: 'var(--today)' }]} size={136} label={`Today ${Math.round(todayPct)}%`}>
-          <b>{centre}</b><span>today</span>
+      <button className={`card hero${missedToday ? ' missed' : ''}`} onClick={() => onOpenHabit(c)} aria-label={`${c.title}: today ${todayText}, ${dayText(c)}, ${p.value} of ${c.target} days done`}>
+        <Rings rings={[todayRing, { pct: p.pct, color: 'var(--today)' }]} size={136} label={missedToday ? 'Today: goal not met' : `Today ${Math.round(todayPct)}%`}>
+          <b style={missedToday ? { color: 'var(--bad)' } : undefined}>{missedToday ? '✕' : centre}</b><span style={missedToday ? { color: 'var(--bad)' } : undefined}>{missedToday ? 'missed' : 'today'}</span>
         </Rings>
         <div className="legend">
           <div>
-            <div className="lg-t"><span className="dotc" style={{ background: look.color }} /><span>Today · {h.name}</span></div>
+            <div className="lg-t"><span className="dotc" style={{ background: missedToday ? 'var(--bad)' : look.color }} /><span>Today · {h.name}</span></div>
             <div className="lg-v" style={{ fontSize: 20 }}>{tv === null ? '0' : h.kind === 'amount' ? fmtAmount(tv) : h.kind === 'time' ? fmtClock(tv) : tv ? 'Done' : '—'}
               {h.kind === 'amount' && h.key !== 'weigh-in' ? <small>/ {fmtAmount(target, h.unit)}</small> : null}</div>
-            <div className="lg-s">{p.todayMet ? 'Counted for today' : h.kind === 'amount' && h.dir !== 'atMost' && h.key !== 'weigh-in' ? `${fmtAmount(Math.max(0, target - (tv ?? 0)), h.unit)} to go` : 'Tap to log'}</div>
+            <div className="lg-s" style={missedToday ? { color: 'var(--bad)', fontWeight: 700 } : undefined}>{missedToday ? 'Goal not met today' : p.todayMet ? 'Counted for today' : h.kind === 'amount' && h.dir !== 'atMost' && h.key !== 'weigh-in' ? `${fmtAmount(Math.max(0, target - (tv ?? 0)), h.unit)} to go` : 'Tap to log'}</div>
           </div>
           <div>
             <div className="lg-t"><span className="dotc" style={{ background: 'var(--today)' }} /><span>{c.title}</span></div>

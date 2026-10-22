@@ -12,6 +12,7 @@ import { dayMet, fmtAmount, fmtClock, habitByKey, habitGoalText, type Habit } fr
 import { addDays, parse, relDay, today } from '../lib/dates';
 import { friendlyError } from '../lib/errors';
 import { lookOf } from '../lib/look';
+import { celebrate } from '../lib/celebrate';
 import type { Challenge } from '../lib/types';
 
 /** How many days back a member may log or correct. */
@@ -34,7 +35,8 @@ export function HabitLogger({ c, open, onClose }: { c: Challenge | null; open: b
   );
 }
 
-type Commit = (value: number | null, entries: number[], msg: string) => Promise<void>;
+/** cheer: float a few emojis up after a successful log (not for “Not today” or deletes). */
+type Commit = (value: number | null, entries: number[], msg: string, cheer?: boolean) => Promise<void>;
 
 function LoggerBody({ c, onClose }: { c: Challenge; onClose: () => void }) {
   const h = habitByKey(c.habit_key);
@@ -50,15 +52,17 @@ function LoggerBody({ c, onClose }: { c: Challenge; onClose: () => void }) {
 
   if (!h) return <p className="lead">This habit isn’t available in this version of the app.</p>;
   const target = c.daily_target ?? h.goal ?? 0;
+  const reachedGoal = (v: number | null) => dayMet(h, target, v);
   const dayLabel = day === t ? 'today' : relDay(day).toLowerCase() === 'yesterday' ? 'yesterday' : relDay(day);
 
   // Save, close the sheet, confirm.
-  const commit: Commit = async (value, entries, msg) => {
+  const commit: Commit = async (value, entries, msg, cheer) => {
     setErr(null); setBusy(true);
     try {
       await saveLog(c.id, day, value, entries);
       onClose();
       toast(msg);
+      if (cheer) celebrate('log', reachedGoal(value) ? 34 : 22);
     } catch (e) { setErr(friendlyError(e)); }
     finally { setBusy(false); }
   };
@@ -132,7 +136,7 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
     commit(next, [...entries, n],
       reached ? `Saved +${fmtAmount(n, h.unit)} · daily goal reached!`
         : over ? `Saved +${fmtAmount(n, h.unit)} · ${fmtAmount(next, h.unit)} ${dayLabel}, over the limit`
-          : `Saved +${fmtAmount(n, h.unit)} · ${fmtAmount(next, h.unit)} ${dayLabel}`);
+          : `Saved +${fmtAmount(n, h.unit)} · ${fmtAmount(next, h.unit)} ${dayLabel}`, !over);
   };
 
   return (
@@ -200,7 +204,7 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
             </Button>
           </div>
           {atMost && value === null ? (
-            <Button variant="secondary" loading={busy} onClick={() => commit(0, [], `Logged: none ${dayLabel}. Well done!`)}>
+            <Button variant="secondary" loading={busy} onClick={() => commit(0, [], `Logged: none ${dayLabel}. Well done!`, true)}>
               <Icon name="check" />Save: none {dayLabel}
             </Button>
           ) : null}
@@ -219,9 +223,9 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
         <form className="stack tight" onSubmit={(e) => {
           e.preventDefault();
           const v = parseFloat(edit);
-          if (isWeight) { if (v >= 20 && v <= 250) commit(+v.toFixed(1), [v], `Weight saved for ${dayLabel}`); return; }
+          if (isWeight) { if (v >= 20 && v <= 250) commit(+v.toFixed(1), [v], `Weight saved for ${dayLabel}`, true); return; }
           if (edit.trim() === '') { commit(null, [], `Cleared ${dayLabel}’s entry`); return; }
-          if (v >= 0) commit(+v.toFixed(2), [v], `Updated: ${fmtAmount(v, h.unit)} ${dayLabel}`);
+          if (v >= 0) commit(+v.toFixed(2), [v], `Updated: ${fmtAmount(v, h.unit)} ${dayLabel}`, atMost ? v <= target : v > 0);
         }}>
           <label className="label" htmlFor="tot">{isWeight ? `Weight ${dayLabel} (kg)` : `Total for ${dayLabel} (${h.unit})`}</label>
           <input id="tot" className="input" style={{ fontFamily: 'var(--font-d)', fontSize: 22, textAlign: 'center' }} type="number" inputMode="decimal" min="0" step={h.step ?? 1}
@@ -257,7 +261,7 @@ function CheckLogger({ h, value, commit, busy }: { h: Habit; value: number | nul
         </button>
       </div>
       <Button className="tint" loading={busy} disabled={!changed}
-        onClick={() => pick !== null && commit(pick, [], pick === 1 ? 'Nice work! Logged as done.' : 'Logged. Every day is a fresh start.')}>
+        onClick={() => pick !== null && commit(pick, [], pick === 1 ? 'Nice work! Logged as done.' : 'Logged. Every day is a fresh start.', pick === 1)}>
         {value === null ? 'Save' : changed ? 'Update' : 'Saved'}
       </Button>
       {value !== null ? <button className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => commit(null, [], 'Entry deleted')}><Icon name="trash" className="ic" /> Delete this day’s entry</button> : null}
@@ -290,7 +294,7 @@ function TimeLogger({ h, target, value, commit, busy }: { h: Habit; target: numb
       <p className="small" style={{ color: ok ? 'var(--good)' : 'var(--warn)', fontWeight: 700 }}>
         {ok ? `On time · goal is ${fmtClock(target)}` : `Later than your ${fmtClock(target)} goal`}
       </p>
-      <Button className="tint" loading={busy} onClick={() => commit(mins, [], ok ? `Saved ${fmtClock(mins)} · right on time!` : `Saved ${fmtClock(mins)}`)}>
+      <Button className="tint" loading={busy} onClick={() => commit(mins, [], ok ? `Saved ${fmtClock(mins)} · right on time!` : `Saved ${fmtClock(mins)}`, ok)}>
         {value === null ? 'Save' : 'Update'} {fmtClock(mins)}
       </Button>
       {value !== null ? <button className="link-btn muted" style={{ alignSelf: 'center' }} onClick={() => commit(null, [], 'Entry deleted')}><Icon name="trash" className="ic" /> Delete this day’s entry</button> : null}

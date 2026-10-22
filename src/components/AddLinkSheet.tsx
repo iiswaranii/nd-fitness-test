@@ -1,3 +1,4 @@
+import { celebrate } from '../lib/celebrate';
 import { useState } from 'react';
 import { Sheet } from './Sheet';
 import { Button, ErrorText } from './Form';
@@ -55,6 +56,7 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
     if (r.firstLink) await refreshProfile();
     toast(`Added: ${fmtKm(r.activity.km)} km ${SPORTS[r.activity.sport].verb.toLowerCase()}${r.firstLink && r.athleteName ? ` · linked to ${r.athleteName}` : ''}`);
     close();
+    celebrate('move', 30);
   };
 
   const submitLink = async (text = url) => {

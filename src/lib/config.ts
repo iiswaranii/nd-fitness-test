@@ -11,6 +11,8 @@ export const DEMO_AUTH: boolean =
 export const HASH_ROUTER: boolean = env.VITE_HASH_ROUTER === 'true';
 /** Test environment: login codes go to the owner's Test inbox instead of email. */
 export const TEST_INBOX: boolean = env.VITE_TEST_INBOX === 'true';
+/** Test environment: new accounts use this fixed code and no email is sent (password resets still use real codes). */
+export const TEST_SIGNUP_CODE: string = env.VITE_TEST_SIGNUP_CODE ?? '';
 
 /** Navigate the whole page to an in-app route, in either routing mode. */
 export function goToRoute(path: string): void {

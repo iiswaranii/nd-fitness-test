@@ -629,33 +629,45 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .trophy { flex: none; filter: drop-shadow(0 3px 4px rgb(0 0 0 / .18)); }
 
 /* ---------- trophy cabinet (profile) ---------- */
-.tally { display: inline-flex; gap: 6px; }
-.tally span { min-width: 26px; height: 22px; padding: 0 7px; border-radius: 99px; display: inline-grid; place-items: center; font-size: 12px; font-weight: 800; color: #1A1206; }
-.tally .t-g { background: linear-gradient(#FFE79A, #E8A92A); }
-.tally .t-s { background: linear-gradient(#FFFFFF, #AEB6C2); }
-.tally .t-b { background: linear-gradient(#F6C29A, #C27A42); }
-.cabinet { position: relative; border-radius: 22px; padding: 14px 12px 6px; overflow: hidden;
-  background: radial-gradient(120% 70% at 50% 0%, #3B2A1D 0%, #24180F 60%, #1A110A 100%);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06), inset 0 18px 30px -18px rgb(255 214 150 / .25), 0 10px 24px -14px rgb(0 0 0 / .6); }
-.cabinet::before { content: ''; position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(115deg, rgb(255 255 255 / .07) 0%, transparent 28%, transparent 70%, rgb(255 255 255 / .04) 100%); }
+.tally { display: inline-flex; gap: 10px; font-size: 13px; font-weight: 800; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.tally span { display: inline-flex; align-items: center; gap: 4px; }
+.tally i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.tally .t-g { background: linear-gradient(#FFE08A, #D99A1E); }
+.tally .t-s { background: linear-gradient(#F2F4F7, #A3ACB9); }
+.tally .t-b { background: linear-gradient(#F0B98E, #B06A35); }
+.cabinet { background: var(--surface); border: 1px solid var(--card-line); border-radius: 22px; padding: 10px 12px 4px; box-shadow: var(--shadow); }
 .cab-row { position: relative; }
 .cab-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; align-items: end; }
-.cup { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0;
-  padding: 18px 2px 0; background: none; border: 0; color: #F5E9D8; font: inherit; }
-.cup .glow { position: absolute; left: 50%; top: 18px; width: 86px; height: 86px; transform: translateX(-50%); border-radius: 50%; pointer-events: none; filter: blur(14px); opacity: .55; }
-.cup.r1 .glow { background: #FFC94A; } .cup.r2 .glow { background: #DCE3EC; opacity: .35; } .cup.r3 .glow { background: #E8975A; opacity: .4; }
-.cup .trophy { position: relative; filter: drop-shadow(0 6px 6px rgb(0 0 0 / .45)); }
-.cup .ribbon { position: absolute; top: 0; left: 50%; transform: translateX(-50%); z-index: 1; width: 24px; height: 24px; border-radius: 50%;
-  display: grid; place-items: center; font-size: 12.5px; font-weight: 900; color: #1A1206; box-shadow: 0 2px 6px rgb(0 0 0 / .45), inset 0 0 0 2px rgb(255 255 255 / .45); }
-.cup.r1 .ribbon { background: linear-gradient(#FFE79A, #E8A92A); } .cup.r2 .ribbon { background: linear-gradient(#FFFFFF, #AEB6C2); } .cup.r3 .ribbon { background: linear-gradient(#F6C29A, #C27A42); }
-.cup .plaque { width: 100%; max-width: 104px; border-radius: 6px; padding: 4px 6px 5px; text-align: center;
-  background: linear-gradient(#5A4330, #3D2C1F); box-shadow: inset 0 1px 0 rgb(255 255 255 / .12), 0 1px 0 rgb(0 0 0 / .4); }
-.cup .plaque b { display: block; font-size: 11px; font-weight: 700; line-height: 1.2; color: #F7E7CC; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cup .plaque i { display: block; font-style: normal; font-size: 9.5px; color: #CDB79A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
-.cup.empty .trophy { opacity: .12; filter: grayscale(1); }
-.cup.empty .plaque { opacity: .35; }
-.cab-shelf { height: 14px; margin: 0 -12px 12px; border-radius: 2px;
-  background: linear-gradient(#A4703F 0%, #8A5A30 45%, #5E3B1C 100%);
-  box-shadow: 0 8px 12px -6px rgb(0 0 0 / .6), inset 0 1px 0 rgb(255 255 255 / .25); }
-.cab-note { position: relative; text-align: center; font-size: 13px; color: #D8C4A6; padding: 0 8px 10px; }
+.cup { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 0; min-width: 0;
+  padding: 10px 2px 0; background: none; border: 0; color: inherit; font: inherit; border-radius: 14px; }
+.cup:disabled { opacity: 1; cursor: default; }
+.cup .glow { position: absolute; left: 50%; top: 14px; width: 54px; height: 54px; transform: translateX(-50%); border-radius: 50%; pointer-events: none; filter: blur(16px); opacity: .22; }
+.cup.r1 .glow { background: #F5B92E; } .cup.r2 .glow { background: #AEB8C6; } .cup.r3 .glow { background: #D98A4E; }
+.cup .trophy { position: relative; filter: drop-shadow(0 3px 3px rgb(0 0 0 / .14)); }
+.cup .plaque { order: 3; width: 100%; max-width: 108px; text-align: center; padding: 8px 2px 8px; }
+.cup .plaque b { display: block; font-size: 11.5px; font-weight: 700; line-height: 1.25; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cup .plaque i { display: block; font-style: normal; font-size: 10.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.cab-shelf { position: absolute; left: 4px; right: 4px; bottom: 46px; height: 1px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--line-strong) 14%, var(--line-strong) 86%, transparent); }
+.cab-shelf::after { content: ''; position: absolute; left: 10%; right: 10%; top: 1px; height: 6px;
+  background: radial-gradient(50% 100% at 50% 0%, rgb(0 0 0 / .07), transparent); }
+.cup .trophy { z-index: 1; }
+.cup.empty { padding-bottom: 46px; }
+.cup.empty .trophy { opacity: .14; filter: grayscale(1); }
+.cab-note { text-align: center; font-size: 13px; color: var(--muted); padding: 2px 8px 10px; margin: 0; }
+.cab-more { display: block; margin: 0 auto; }
+
+/* ---------- celebration burst + missed day ---------- */
+.cheer { position: fixed; inset: 0; pointer-events: none; z-index: 90; overflow: hidden; }
+.cheer span { position: absolute; bottom: -28px; line-height: 1; opacity: 0; will-change: transform, opacity;
+  animation-name: cheer-up; animation-timing-function: cubic-bezier(.22,.61,.36,1); animation-fill-mode: forwards; }
+@keyframes cheer-up {
+  0% { transform: translate(0, 0) scale(.6) rotate(0); opacity: 0; }
+  12% { opacity: .95; transform: translate(calc(var(--dx) * .15), -6vh) scale(1) rotate(calc(var(--rot) * .3)); }
+  70% { opacity: .8; }
+  100% { transform: translate(var(--dx), calc(var(--rise) * -1)) scale(.9) rotate(var(--rot)); opacity: 0; }
+}
+.check-ring.miss { border-color: color-mix(in srgb, var(--bad) 55%, transparent); color: var(--bad); background: color-mix(in srgb, var(--bad) 10%, transparent); }
+.check-ring.miss .ic { stroke-width: 2.6; width: 20px; height: 20px; }
+.hrow.missed { background: color-mix(in srgb, var(--bad) 6%, transparent); }
+.card.hero.missed { border-color: color-mix(in srgb, var(--bad) 40%, transparent); }

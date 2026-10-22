@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { DEMO_AUTH, DEMO_OTP } from './config';
+import { DEMO_AUTH, DEMO_OTP, TEST_SIGNUP_CODE } from './config';
 import type { Identifier } from './validation';
 
 export type AppUser = {
@@ -34,10 +34,12 @@ export interface AuthApi {
   onChange(cb: (u: AppUser | null) => void): () => void;
   /** Email code. 'signup' creates the account if needed; 'reset' only works for existing accounts. */
   sendOtp(id: Identifier, mode?: 'signup' | 'reset'): Promise<void>;
+  /** True when sign-up uses the fixed test code (no email is sent). */
+  readonly testSignup?: boolean;
   signInWithPassword(email: string, password: string): Promise<void>;
   /** Sets (or changes) the signed-in member's password. */
   setPassword(password: string): Promise<void>;
-  verifyOtp(id: Identifier, code: string): Promise<void>;
+  verifyOtp(id: Identifier, code: string, mode?: 'signup' | 'reset'): Promise<void>;
   signOut(): Promise<void>;
   getProfile(uid: string): Promise<Profile | null>;
   updateProfile(uid: string, patch: Partial<Pick<Profile, 'full_name' | 'city' | 'state' | 'country' | 'notify_new_challenges'>>): Promise<void>;
@@ -81,14 +83,26 @@ const supabaseAuth: AuthApi = {
     const { data } = sb().auth.onAuthStateChange((_e, session) => cb(toAppUser(session?.user)));
     return () => data.subscription.unsubscribe();
   },
+  testSignup: !!TEST_SIGNUP_CODE,
   async sendOtp(id, mode = 'signup') {
+    if (mode === 'signup' && TEST_SIGNUP_CODE && id.kind === 'email') return; // test: fixed code, no email
     const { error } =
       id.kind === 'email'
         ? await sb().auth.signInWithOtp({ email: id.email, options: { shouldCreateUser: mode === 'signup' } })
         : await sb().auth.signInWithOtp({ phone: id.phone, options: { shouldCreateUser: true, channel: 'sms' } });
     if (error) throw error;
   },
-  async verifyOtp(id, code) {
+  async verifyOtp(id, code, mode = 'signup') {
+    if (mode === 'signup' && TEST_SIGNUP_CODE && id.kind === 'email') {
+      const { data, error } = await sb().functions.invoke('test-signup', { body: { email: id.email, code } });
+      if (error) {
+        const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+        const e = new Error(body?.error || error.message); e.name = error.name; throw e;
+      }
+      const { error: e2 } = await sb().auth.verifyOtp({ token_hash: data.token_hash, type: 'magiclink' });
+      if (e2) throw e2;
+      return;
+    }
     const { error } =
       id.kind === 'email'
         ? await sb().auth.verifyOtp({ email: id.email, token: code, type: 'email' })

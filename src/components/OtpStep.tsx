@@ -2,13 +2,15 @@ import { useEffect, useState } from 'react';
 import { OtpInput } from './OtpInput';
 import { Button, ErrorText } from './Form';
 import { maskIdentifier, type Identifier } from '../lib/validation';
-import { OTP_LENGTH, RESEND_SECONDS, TEST_INBOX } from '../lib/config';
+import { OTP_LENGTH, RESEND_SECONDS, TEST_INBOX, TEST_SIGNUP_CODE } from '../lib/config';
 import { friendlyError } from '../lib/errors';
 
 /** "Enter the code we sent" step, shared by sign-up and password reset. */
 export function OtpStep({
-  id, sentAt, onVerify, onResend, onChangeId,
+  id, sentAt, onVerify, onResend, onChangeId, testCode,
 }: {
+  /** Test sign-up: no email is sent; testers type the fixed test code. */
+  testCode?: boolean;
   id: Identifier; sentAt: number;
   onVerify: (code: string) => Promise<void>;
   onResend: () => Promise<void>;
@@ -38,10 +40,12 @@ export function OtpStep({
     <form className="stack loose" onSubmit={(e) => { e.preventDefault(); verify(); }}>
       <div className="stack tight">
         <h1 className="h1">Enter the code</h1>
-        <p className="lead">
+        {testCode ? (
+          <p className="lead">Test mode: no email is sent. Enter the test code <span className="strong">{TEST_SIGNUP_CODE}</span> to create the account for <span className="strong">{maskIdentifier(id)}</span>.</p>
+        ) : <p className="lead">
           We sent a {OTP_LENGTH}-digit code to <span className="strong">{maskIdentifier(id)}</span>.
           {TEST_INBOX ? ' Test setup: no email is sent. The owner finds the code in Admin → Test inbox.' : id.kind === 'email' ? ' Check your spam folder if it isn’t there.' : ''}
-        </p>
+        </p>}
       </div>
       <div className="stack tight">
         <OtpInput value={code} onChange={(v) => { setCode(v); setErr(null); }} onComplete={verify} invalid={!!err} disabled={busy} />
@@ -52,7 +56,7 @@ export function OtpStep({
         <button type="button" className="link-btn muted" onClick={onChangeId}>
           Change {id.kind === 'email' ? 'email' : 'number'}
         </button>
-        {left > 0 ? (
+        {testCode ? null : left > 0 ? (
           <span className="small muted" aria-live="polite">Resend in 0:{String(left).padStart(2, '0')}</span>
         ) : (
           <button

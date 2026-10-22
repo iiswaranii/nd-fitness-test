@@ -41,13 +41,14 @@ export default function Start() {
       <Screen back onBack={() => { saveFlow(null); setStep('id'); }}>
         <OtpStep
           id={id}
+          testCode={auth.testSignup && (saved?.step ?? mode) !== 'reset'}
           sentAt={sentAt}
           onChangeId={() => { saveFlow(null); setStep('id'); }}
           onResend={() => send(id)}
           onVerify={async (code) => {
             const wasReset = (saved?.step ?? mode) === 'reset';
             if (wasReset) { try { sessionStorage.setItem(RESET_FLAG, '1'); } catch { /* ignore */ } }
-            await auth.verifyOtp(id, code);
+            await auth.verifyOtp(id, code, wasReset ? 'reset' : 'signup');
             saveFlow(null);
             nav(wasReset ? '/set-password' : '/', { replace: true }); // new members go on to create a password
           }}
