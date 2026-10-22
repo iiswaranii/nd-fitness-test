@@ -62,7 +62,7 @@ function LoggerBody({ c, onClose }: { c: Challenge; onClose: () => void }) {
       await saveLog(c.id, day, value, entries);
       onClose();
       toast(msg);
-      if (cheer) celebrate('log', reachedGoal(value) ? 34 : 22);
+      if (cheer) celebrate(reachedGoal(value));
     } catch (e) { setErr(friendlyError(e)); }
     finally { setBusy(false); }
   };
