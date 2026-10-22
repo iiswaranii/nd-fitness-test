@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button, ErrorText } from './Form';
 import { Icon } from './Icon';
 import { useToast } from './Toast';
-import { data } from '../lib/data';
+import { data, stravaUrlIn } from '../lib/data';
 import { useSession } from '../lib/session';
 import { friendlyError } from '../lib/errors';
 
@@ -18,14 +18,17 @@ export function StravaProfileLink({ onDone }: { onDone?: () => void }) {
   const [err, setErr] = useState<string | null>(null);
 
   const paste = async () => {
-    try { setUrl((await navigator.clipboard.readText()).trim()); setErr(null); }
+    try { const t = (await navigator.clipboard.readText()).trim(); setUrl(stravaUrlIn(t) ?? t); setErr(null); }
     catch { setErr('Couldn’t read the clipboard. Long-press the box and choose Paste.'); }
   };
   const submit = async () => {
-    if (!/strava/i.test(url)) { setErr('Paste your Strava profile link (strava.app.link/… or strava.com/athletes/…).'); return; }
+    const link = stravaUrlIn(url);
+    if (!link) { setErr('Paste your Strava profile link (strava.app.link/… or strava.com/athletes/…).'); return; }
+    if (/\/activities\//.test(link)) { setErr('That’s a link to an activity. Please paste your profile link instead (Strava → You → Share → Copy link).'); return; }
+    setUrl(link);
     setBusy(true); setErr(null);
     try {
-      const r = await data.linkStravaProfile(url);
+      const r = await data.linkStravaProfile(link);
       await refreshProfile();
       toast(`Linked to ${r.athleteName ?? 'your Strava profile'}`);
       onDone?.();
@@ -48,7 +51,8 @@ export function StravaProfileLink({ onDone }: { onDone?: () => void }) {
         <label htmlFor="spl">Your Strava profile link</label>
         <div className="input-wrap">
           <input id="spl" className="input has-trail" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false}
-            placeholder="https://strava.app.link/…" value={url} onChange={(e) => { setUrl(e.target.value); setErr(null); }} />
+            placeholder="https://strava.app.link/…" value={url} onChange={(e) => { setUrl(e.target.value); setErr(null); }}
+            onPaste={(e) => { const t = e.clipboardData.getData('text'); const u = stravaUrlIn(t); if (u) { e.preventDefault(); setUrl(u); setErr(null); } }} />
           <button type="button" className="trail-btn" onClick={paste} aria-label="Paste from clipboard"><Icon name="paste" /></button>
         </div>
       </div>

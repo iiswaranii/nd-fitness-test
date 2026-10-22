@@ -4,7 +4,7 @@ import { Button, ErrorText } from './Form';
 import { Icon } from './Icon';
 import { StravaProfileLink } from './StravaProfileLink';
 import { useToast } from './Toast';
-import { data, parseStravaLink, type LinkPreview } from '../lib/data';
+import { data, parseStravaLink, stravaUrlIn, type LinkPreview } from '../lib/data';
 import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
 import { friendlyError } from '../lib/errors';
@@ -37,7 +37,7 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
   const close = () => { reset(); onClose(); };
 
   const paste = async () => {
-    try { const t = await navigator.clipboard.readText(); setUrl(t.trim()); setErr(null); }
+    try { const t = (await navigator.clipboard.readText()).trim(); setUrl(/data-embed-id/i.test(t) ? t : stravaUrlIn(t) ?? t); setErr(null); }
     catch { setErr('Couldn’t read the clipboard. Long-press the box and choose Paste.'); }
   };
 
@@ -104,7 +104,8 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
               <label htmlFor="sl">Strava activity link</label>
               <div className="input-wrap">
                 <input id="sl" className="input has-trail" type="text" inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                  placeholder="https://strava.app.link/…" value={url} onChange={(e) => { setUrl(e.target.value); setErr(null); }} />
+                  placeholder="https://strava.app.link/…" value={url} onChange={(e) => { setUrl(e.target.value); setErr(null); }}
+                  onPaste={(e) => { const t = e.clipboardData.getData('text'); const u = /data-embed-id/i.test(t) ? null : stravaUrlIn(t); if (u) { e.preventDefault(); setUrl(u); setErr(null); } }} />
                 <button type="button" className="trail-btn" onClick={paste} aria-label="Paste from clipboard"><Icon name="paste" /></button>
               </div>
             </div>

@@ -7,6 +7,7 @@ import { ToastProvider } from './components/Toast';
 import { keepFocusedFieldVisible, watchKeyboard } from './lib/viewport';
 import { captureInstallPrompt } from './lib/platform';
 import { InstallGate } from './components/InstallGate';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import './styles/global.css';
 import { HASH_ROUTER } from './lib/config';
 
@@ -18,6 +19,7 @@ const Router = HASH_ROUTER ? HashRouter : BrowserRouter;
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    <ErrorBoundary>
     <Router {...(HASH_ROUTER ? {} : { basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/' })}>
       <SessionProvider>
         <ToastProvider>
@@ -27,5 +29,6 @@ createRoot(document.getElementById('root')!).render(
         </ToastProvider>
       </SessionProvider>
     </Router>
+    </ErrorBoundary>
   </StrictMode>,
 );

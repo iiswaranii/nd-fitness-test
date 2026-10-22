@@ -49,6 +49,12 @@ export interface DataApi {
  * share link (resolved on the server), or the Share → Embed code (which also carries a token for
  * followers-only activities).
  */
+/** The Strava web address inside shared text ("Check out Swaran Singh on Strava https://strava.app.link/…"). */
+export function stravaUrlIn(text: string): string | null {
+  const urls = text.match(/https?:\/\/[^\s"'<>]+/gi) ?? [];
+  return urls.find((u) => /strava(\.app\.link|\.com|\.va)\b|stra\.va\//i.test(u))?.replace(/[).,!?]+$/, '') ?? null;
+}
+
 export function parseStravaLink(text: string): { id?: string; shortUrl?: string; token?: string } | null {
   const e = text.match(/data-embed-id=["']?(\d{6,})/i);
   if (e) return { id: e[1], token: text.match(/data-token=["']?([\w-]+)/i)?.[1] };
@@ -95,7 +101,19 @@ const toAct = (r: ActRow): Activity => ({
 });
 async function fnError(error: unknown): Promise<Error> {
   const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
-  return new Error(body?.error || (error as Error).message);
+  const e = new Error(body?.error || (error as Error).message);
+  e.name = (error as Error).name;
+  return e;
+}
+/** Calls a server function. If the phone couldn't reach it (bad signal, app paused), tries once more. */
+async function invoke(fn: string, body: Record<string, unknown>) {
+  let r = await sb().functions.invoke(fn, { body });
+  const name = (r.error as Error | null)?.name ?? '';
+  if (r.error && /FunctionsFetchError|FunctionsRelayError/.test(name)) {
+    await new Promise((res) => setTimeout(res, 1200));
+    r = await sb().functions.invoke(fn, { body });
+  }
+  return r;
 }
 
 const supabaseData: DataApi = {
@@ -141,7 +159,7 @@ const supabaseData: DataApi = {
     if (error) throw error;
   },
   async pushPublicKey() {
-    const { data, error } = await sb().functions.invoke('notify-new-challenge', { body: { action: 'keys' } });
+    const { data, error } = await invoke('notify-new-challenge', { action: 'keys' });
     if (error) throw await fnError(error);
     return String(data?.publicKey ?? '');
   },
@@ -149,7 +167,7 @@ const supabaseData: DataApi = {
     await sb().from('push_subscriptions').delete().eq('endpoint', endpoint);
   },
   async announceChallenge(id) {
-    const { data, error } = await sb().functions.invoke('notify-new-challenge', { body: { challenge_id: id } });
+    const { data, error } = await invoke('notify-new-challenge', { challenge_id: id });
     if (error) throw await fnError(error);
     return { sent: Number(data?.sent ?? 0) };
   },
@@ -182,14 +200,14 @@ const supabaseData: DataApi = {
     if (error) throw error;
   },
   async linkStravaProfile(url) {
-    const { data, error } = await sb().functions.invoke('strava-activity', { body: { action: 'link-profile', url } });
+    const { data, error } = await invoke('strava-activity', { action: 'link-profile', url: stravaUrlIn(url) ?? url });
     if (error) throw await fnError(error);
     return { athleteId: String(data.athleteId), athleteName: data.athleteName ?? null };
   },
   async addActivityByLink(text, manual, confirm) {
     const p = parseStravaLink(text);
     if (!p) throw new Error('That doesn’t look like a Strava activity link.');
-    const { data, error } = await sb().functions.invoke('strava-activity', { body: { ...p, today: today(), manual, confirm: confirm === true } });
+    const { data, error } = await invoke('strava-activity', { ...p, today: today(), manual, confirm: confirm === true });
     if (error) throw await fnError(error);
     if (data.needsStats) return { needsStats: true, preview: data.preview as LinkPreview };
     return { activity: toAct(data.activity as ActRow), athleteName: String(data.athleteName ?? ''), firstLink: !!data.firstLink };
