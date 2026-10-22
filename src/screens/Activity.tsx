@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Page } from '../components/Page';
 import { Button } from '../components/Form';
 import { Icon } from '../components/Icon';
@@ -21,9 +21,7 @@ export default function Activity() {
   const { profile } = useSession();
   const nav = useNavigate();
   const toast = useToast();
-  const [params, setParams] = useSearchParams();
-  // Opened from the home-screen shortcut “Add Strava” → go straight to the paste sheet.
-  const [link, setLink] = useState(params.get('add') === '1');
+  const [link, setLink] = useState(false);
   const [del, setDel] = useState<Act | null>(null);
   const [busy, setBusy] = useState(false);
   const [openWeek, setOpenWeek] = useState<string | null>(null);
@@ -102,7 +100,7 @@ export default function Activity() {
           <button className="link-btn" style={{ alignSelf: 'center' }} onClick={() => nav('/challenges')}>Go to challenges</button>
         </div>
       </PullToRefresh>
-      <AddLinkSheet open={link} onClose={() => { setLink(false); if (params.get('add')) setParams({}, { replace: true }); }} />
+      <AddLinkSheet open={link} onClose={() => setLink(false)} />
       <Sheet open={!!del} onClose={() => setDel(null)} label="Activity">
         {del ? (
           <>

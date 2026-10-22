@@ -31,12 +31,6 @@ export default defineConfig(({ mode }) => {
               display_override: ['standalone'],
               background_color: '#F3F4F6',
               theme_color: '#F3F4F6',
-              // Long-press the app icon (Android) for these quick actions.
-              shortcuts: [
-                { name: 'Log today', short_name: 'Log today', url: base, icons: [{ src: base + 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }] },
-                { name: 'Add a Strava activity', short_name: 'Add Strava', url: base + 'activity?add=1', icons: [{ src: base + 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }] },
-                { name: 'Challenges', short_name: 'Challenges', url: base + 'challenges', icons: [{ src: base + 'icons/icon-192.png', sizes: '192x192', type: 'image/png' }] },
-              ],
               icons: [
                 { src: base + 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
                 { src: base + 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
