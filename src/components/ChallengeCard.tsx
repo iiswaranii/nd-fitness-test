@@ -71,8 +71,9 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
   const st = status(c);
   const can = canJoin(c);
   return (
-    <div ref={ref} className={`card cc open ${isNew ? 'is-new' : ''}`} style={{ ['--c' as string]: look.color }}>
-      <button className="cc-top" style={{ background: 'none', border: 0, padding: 0, textAlign: 'left', width: '100%' }} onClick={() => nav(`/c/${c.id}`)}>
+    // The whole card opens the details; the Join button only joins. (The title is the keyboard/screen-reader target.)
+    <div ref={ref} className={`card cc open ${isNew ? 'is-new' : ''}`} style={{ ['--c' as string]: look.color, cursor: 'pointer' }} onClick={() => nav(`/c/${c.id}`)}>
+      <button className="cc-top" style={{ background: 'none', border: 0, padding: 0, textAlign: 'left', width: '100%' }} onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}>
         <span className="sp"><Icon name={look.icon} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="cc-t" style={{ display: 'block' }}>{c.title}</span>
@@ -91,11 +92,11 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
         </span>
       </div>
       {!c.eligible ? (
-        <button className="btn ghost" onClick={() => nav(`/c/${c.id}`)}><Icon name="eye" />View challenge</button>
+        <button className="btn ghost" onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}><Icon name="eye" />View challenge</button>
       ) : can ? (
-        <button className="btn tint" onClick={() => { markSeen(c.id); onJoin(c); }}><Icon name="plus" />Join challenge</button>
+        <button className="btn tint" onClick={(e) => { e.stopPropagation(); markSeen(c.id); onJoin(c); }}><Icon name="plus" />Join challenge</button>
       ) : !regOpen(c) && st !== 'finished' ? (
-        <button className="btn ghost" onClick={() => nav(`/c/${c.id}`)}><Icon name="cal" />Registration opens {fmtDay(c.reg_opens)}</button>
+        <button className="btn ghost" onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}><Icon name="cal" />Registration opens {fmtDay(c.reg_opens)}</button>
       ) : null}
     </div>
   );
