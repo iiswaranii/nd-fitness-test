@@ -17,7 +17,7 @@ export default function Welcome() {
       <div className="stack loose" style={{ paddingTop: 12 }}>
         <BrandMark />
         <div className="stack tight">
-          <h1 className="h1">Namdhari Health &amp; Fitness</h1>
+          <h1 className="h1">Namdhari Fitness Connect</h1>
           <p className="lead">Healthy habits and fitness challenges for our community.</p>
         </div>
         <div className="stack">

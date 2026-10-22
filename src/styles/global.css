@@ -1,4 +1,4 @@
-/* Namdhari Health & Fitness — design tokens and mobile-safe layout primitives.
+/* Namdhari Fitness Connect — design tokens and mobile-safe layout primitives.
    Layout concept: a single portrait column, edge-to-edge backgrounds, content kept clear of
    notches, camera cut-outs, status bars and home indicators via env(safe-area-inset-*). */
 :root {

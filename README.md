@@ -1,4 +1,4 @@
-# Namdhari Health & Fitness
+# Namdhari Fitness Connect
 
 A phone app (installable web app) for community fitness and healthy-habit challenges.
 Members sign in with Google or an email code, join challenges, log habits, and add walks, runs and rides by pasting a Strava activity link.

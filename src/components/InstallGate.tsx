@@ -51,10 +51,10 @@ function InstallScreen({ kind, onAdmin, notAdmin }: { kind: 'ios' | 'android' | 
       <div className="stack loose" style={{ paddingTop: 12 }}>
         <BrandMark size={72} />
         <div className="stack tight">
-          <h1 className="h1">{kind === 'desktop' ? 'Open it on your phone' : 'Add the app to your phone'}</h1>
+          <h1 className="h1">{kind === 'desktop' ? 'Open this on your phone' : 'Add the app to your phone'}</h1>
           <p className="lead">
             {kind === 'desktop'
-              ? 'Namdhari Health & Fitness is a phone app. Scan this code with your phone’s camera to open it.'
+              ? 'Namdhari Fitness Connect is made for mobile. Scan the QR code with your phone to open it in your phone’s browser.'
               : 'It works like a normal app from your Home Screen: full screen, faster, and with reminders.'}
           </p>
         </div>
@@ -63,6 +63,11 @@ function InstallScreen({ kind, onAdmin, notAdmin }: { kind: 'ios' | 'android' | 
           <div className="card stack" style={{ alignItems: 'center' }}>
             <Qr text={url} />
             <p className="small muted" style={{ overflowWrap: 'anywhere', textAlign: 'center' }}>{url.replace(/^https?:\/\//, '')}</p>
+            <ol className="steps" style={{ alignSelf: 'stretch' }}>
+              <li><span className="n">1</span><span>Open the <span className="strong">Camera</span> on your phone</span></li>
+              <li><span className="n">2</span><span>Point it at the code and tap the link that appears</span></li>
+              <li><span className="n">3</span><span>In your phone’s browser, add the app to your <span className="strong">Home Screen</span></span></li>
+            </ol>
           </div>
         ) : kind === 'android' ? (
           androidPrompt ? (
@@ -74,7 +79,7 @@ function InstallScreen({ kind, onAdmin, notAdmin }: { kind: 'ios' | 'android' | 
             <ol className="steps">
               <li><span className="n">1</span><span>Tap the <span className="strong">⋮ menu</span> at the top right of Chrome</span></li>
               <li><span className="n">2</span><span>Tap <span className="strong">Install app</span> or <span className="strong">Add to Home screen</span></span></li>
-              <li><span className="n">3</span><span>Open <span className="strong">ND Fitness</span> from your Home Screen</span></li>
+              <li><span className="n">3</span><span>Open <span className="strong">NF Connect</span> from your Home Screen</span></li>
             </ol>
           )
         ) : (
@@ -83,7 +88,7 @@ function InstallScreen({ kind, onAdmin, notAdmin }: { kind: 'ios' | 'android' | 
             <ol className="steps">
               <li><span className="n">1</span><span>Tap the <span className="strong">Share</span> button <span className="inline-ic"><ShareIcon /></span> {isIosSafari() ? 'at the bottom of Safari' : 'in your browser'}</span></li>
               <li><span className="n">2</span><span>Scroll down and tap <span className="strong">Add to Home Screen</span></span></li>
-              <li><span className="n">3</span><span>Tap <span className="strong">Add</span>, then open <span className="strong">ND Fitness</span> from your Home Screen</span></li>
+              <li><span className="n">3</span><span>Tap <span className="strong">Add</span>, then open <span className="strong">NF Connect</span> from your Home Screen</span></li>
             </ol>
           </>
         )}

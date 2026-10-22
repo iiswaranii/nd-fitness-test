@@ -1,9 +1,9 @@
-/* Phone notifications for Namdhari Health & Fitness.
+/* Phone notifications for Namdhari Fitness Connect.
    Loaded into the app's service worker. Shows pushes from our server and opens the right screen on tap. */
 self.addEventListener('push', (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch (e) { d = { body: event.data && event.data.text() }; }
-  const title = d.title || 'Namdhari Health & Fitness';
+  const title = d.title || 'Namdhari Fitness Connect';
   event.waitUntil((async () => {
     await self.registration.showNotification(title, {
       body: d.body || '',
