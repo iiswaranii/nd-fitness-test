@@ -9,7 +9,7 @@ const STEPS: Step[] = [
   { title: 'Link Strava once', line: 'Paste your Strava profile link. Only your own walks can be added.', shot: 'strava-link' },
   { title: 'Add your walk, run or ride', line: 'After recording in Strava:', flow: ['Strava', 'Share', 'Copy link', 'Paste here'], shot: 'add' },
   { title: 'Log habits every day', line: 'On Today, tap a habit and answer.', shot: 'log' },
-  { title: 'Set a reminder', line: 'Pick any time. We remind you only if you haven’t logged.', shot: 'reminder' },
+  { title: 'Set a reminder', line: 'Pick an hour. We remind you only if you haven’t logged.', shot: 'reminder' },
   { title: 'Climb the leaderboard', line: 'Finish in the top 3 to win a trophy.', shot: 'podium' },
 ];
 

@@ -676,17 +676,6 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .hrow.missed { background: color-mix(in srgb, var(--bad) 6%, transparent); }
 .card.hero.missed { border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
 
-/* ---------- iPhone-style time wheels ---------- */
-.wheels { position: relative; display: flex; justify-content: center; align-items: center; gap: 2px; padding: 4px 0; user-select: none; -webkit-user-select: none; }
-.wheel-band { position: absolute; left: 50%; top: 50%; width: min(260px, 100%); height: 40px; transform: translate(-50%, -50%); border-radius: 12px; background: color-mix(in srgb, var(--ink) 8%, transparent); pointer-events: none; }
-.wheel { position: relative; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
-  -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); outline: none; }
-.wheel::-webkit-scrollbar { display: none; }
-.wheel-i { scroll-snap-align: center; display: grid; place-items: center; font-family: var(--font-d); font-size: 21px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; cursor: pointer; transition: color .15s, transform .15s; }
-.wheel-i.on { color: var(--ink); font-weight: 600; transform: scale(1.06); }
-.wheel-colon { position: relative; font-family: var(--font-d); font-size: 21px; font-weight: 600; color: var(--ink); margin: 0 -2px; }
-.wheel:focus-visible { box-shadow: 0 0 0 2px var(--focus); border-radius: 10px; }
-
 /* ---------- brand + guide ---------- */
 .brand-bar { display: flex; align-items: center; gap: 8px; font-family: var(--font-d); font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; color: var(--ink-2); }
 .brand-bar .brand-mark { border-radius: 7px; overflow: hidden; }

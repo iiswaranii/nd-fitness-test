@@ -95,11 +95,9 @@ export async function testNotification(): Promise<'shown' | 'in-app'> {
   return 'in-app';
 }
 
+/** Every hour of the day, 12 am to 11 pm. */
 export const REMINDER_TIMES = [
   { value: '', label: 'No reminder' },
-  { value: '06:00', label: '6:00 am' }, { value: '07:00', label: '7:00 am' }, { value: '08:00', label: '8:00 am' },
-  { value: '10:00', label: '10:00 am' }, { value: '12:00', label: '12:00 pm' }, { value: '14:00', label: '2:00 pm' },
-  { value: '17:00', label: '5:00 pm' }, { value: '18:00', label: '6:00 pm' }, { value: '19:00', label: '7:00 pm' },
-  { value: '20:00', label: '8:00 pm' }, { value: '21:00', label: '9:00 pm' }, { value: '22:00', label: '10:00 pm' },
+  ...Array.from({ length: 24 }, (_, h) => ({ value: `${String(h).padStart(2, '0')}:00`, label: `${h % 12 || 12}:00 ${h < 12 ? 'am' : 'pm'}` })),
 ];
 export const reminderLabel = (v: string | null) => REMINDER_TIMES.find((r) => r.value === (v ?? ''))?.label ?? v ?? 'No reminder';
