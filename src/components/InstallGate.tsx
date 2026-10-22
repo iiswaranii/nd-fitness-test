@@ -79,7 +79,7 @@ function InstallScreen({ kind, onAdmin, notAdmin }: { kind: 'ios' | 'android' | 
             <ol className="steps">
               <li><span className="n">1</span><span>Tap the <span className="strong">⋮ menu</span> at the top right of Chrome</span></li>
               <li><span className="n">2</span><span>Tap <span className="strong">Install app</span> or <span className="strong">Add to Home screen</span></span></li>
-              <li><span className="n">3</span><span>Open <span className="strong">NF Connect</span> from your Home Screen</span></li>
+              <li><span className="n">3</span><span>Open <span className="strong">Namdhari FC</span> from your Home Screen</span></li>
             </ol>
           )
         ) : (
@@ -88,7 +88,7 @@ function InstallScreen({ kind, onAdmin, notAdmin }: { kind: 'ios' | 'android' | 
             <ol className="steps">
               <li><span className="n">1</span><span>Tap the <span className="strong">Share</span> button <span className="inline-ic"><ShareIcon /></span> {isIosSafari() ? 'at the bottom of Safari' : 'in your browser'}</span></li>
               <li><span className="n">2</span><span>Scroll down and tap <span className="strong">Add to Home Screen</span></span></li>
-              <li><span className="n">3</span><span>Tap <span className="strong">Add</span>, then open <span className="strong">NF Connect</span> from your Home Screen</span></li>
+              <li><span className="n">3</span><span>Tap <span className="strong">Add</span>, then open <span className="strong">Namdhari FC</span> from your Home Screen</span></li>
             </ol>
           </>
         )}

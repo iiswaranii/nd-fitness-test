@@ -20,7 +20,7 @@ export default defineConfig(({ mode }) => {
             includeAssets: ['icons/favicon.svg', 'icons/apple-touch-icon.png', 'push-sw.js'],
             manifest: {
               name: 'Namdhari Fitness Connect',
-              short_name: 'NF Connect',
+              short_name: 'Namdhari FC',
               description: 'Community fitness challenges powered by your Strava activities.',
               start_url: base,
               scope: base,
