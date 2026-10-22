@@ -1,3 +1,4 @@
+import { BrandMark } from '../components/BrandMark';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page } from '../components/Page';
@@ -91,6 +92,12 @@ export default function Profile() {
         <TrophyRack />
         <Badges />
 
+        <button className="guide-card" onClick={() => nav('/guide')}>
+          <span className="gi"><Icon name="info" /></span>
+          <span className="grow"><span className="strong" style={{ display: 'block' }}>How to use the app</span><span className="small muted">6 quick steps, with pictures</span></span>
+          <Icon name="chev" />
+        </button>
+
         <NotificationSettings />
 
         <div className="stack tight">
@@ -149,6 +156,11 @@ export default function Profile() {
               <span className="grow strong" style={{ color: 'var(--bad)' }}>Log out</span>
             </button>
           </div>
+        </div>
+        <div className="app-foot">
+          <BrandMark size={44} />
+          <p className="strong">Namdhari Fitness Connect</p>
+          <p className="tiny muted">Walk, run, ride and build healthy habits together</p>
         </div>
       </div>
 

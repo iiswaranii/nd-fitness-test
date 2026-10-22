@@ -1,3 +1,4 @@
+import { ReminderPicker, fmtReminder } from '../components/TimeWheel';
 import { useCallback, useEffect, useState } from 'react';
 import { Community } from '../components/Community';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -10,8 +11,7 @@ import { StatusPill } from '../components/ChallengeCard';
 import { JoinSheet } from '../components/JoinSheet';
 import { AddLinkSheet } from '../components/AddLinkSheet';
 import { EDIT_DAYS, HabitLogger } from '../components/HabitLogger';
-import { Picker } from '../components/Picker';
-import { REMINDER_TIMES, enablePush, pushState } from '../lib/push';
+import { enablePush, pushState } from '../lib/push';
 import { Sheet } from '../components/Sheet';
 import { useToast } from '../components/Toast';
 import { useStore } from '../lib/store';
@@ -136,12 +136,12 @@ export default function ChallengeDetail() {
             <span className="sp" style={{ ['--c' as string]: 'var(--ride)' }}><Icon name="bell" /></span>
             <span className="grow" style={{ minWidth: 0 }}><span className="strong" style={{ display: 'block' }}>Daily reminder</span><span className="small muted">Only on days you haven’t logged</span></span>
             <div style={{ width: 132, flex: 'none' }}>
-              <Picker compact title="Remind me at" value={c.my_reminder ?? ''} options={REMINDER_TIMES} search={false}
+              <ReminderPicker compact title="Remind me at" value={c.my_reminder ?? ''}
                 onChange={async (v) => {
                   try {
                     if (v && (await pushState()) === 'off') await enablePush();
                     await data.setReminder(c.id, v || null); await reload();
-                    toast(v ? `Reminder set for ${REMINDER_TIMES.find((x) => x.value === v)?.label}` : 'Reminder off');
+                    toast(v ? `Reminder set for ${fmtReminder(v)}` : 'Reminder off');
                   } catch (e) { toast(friendlyError(e)); }
                 }} />
             </div>

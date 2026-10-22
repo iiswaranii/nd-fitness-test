@@ -1,3 +1,5 @@
+import { TrophiesPage, BadgesPage } from './screens/Awards';
+import Guide from './screens/Guide';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AboutYou from './screens/AboutYou';
 import TestInbox from './screens/admin/TestInbox';
@@ -69,6 +71,9 @@ function MemberRoutes() {
         <Route path="/c/:id" element={<ChallengeDetail />} />
         <Route path="/activity" element={<Activity />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/trophies" element={<TrophiesPage />} />
+        <Route path="/badges" element={<BadgesPage />} />
+        <Route path="/guide" element={<Guide />} />
         <Route path="/admin" element={<AdminOnly><AdminHome /></AdminOnly>} />
         <Route path="/admin/new" element={<AdminOnly><CreateChallenge /></AdminOnly>} />
         <Route path="/admin/c/:id" element={<AdminOnly><AdminChallenge /></AdminOnly>} />

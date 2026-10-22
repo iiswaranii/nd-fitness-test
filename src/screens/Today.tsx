@@ -1,3 +1,4 @@
+import { BrandMark } from '../components/BrandMark';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Page } from '../components/Page';
@@ -40,7 +41,8 @@ export default function Today() {
     <Page>
       <PullToRefresh onRefresh={refresh}>
         <div className="stack loose">
-          <div className="page-head">
+          <div className="brand-bar"><BrandMark size={26} /><span>Namdhari Fitness Connect</span></div>
+          <div className="page-head" style={{ marginTop: -10 }}>
             <div>
               <p className="eyebrow">{longDay(today())}</p>
               <h1 className="h1" style={{ marginTop: 2 }}>Hello, {name.split(' ')[0]}</h1>

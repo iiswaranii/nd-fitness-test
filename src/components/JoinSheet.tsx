@@ -1,3 +1,4 @@
+import { ReminderPicker } from './TimeWheel';
 import { useEffect, useState } from 'react';
 import { Sheet } from './Sheet';
 import { Button, ErrorText } from './Form';
@@ -11,8 +12,7 @@ import { fmtDay, fmtRange } from '../lib/dates';
 import { habitByKey, habitGoalText } from '../lib/habits';
 import { friendlyError } from '../lib/errors';
 import type { Challenge } from '../lib/types';
-import { Picker } from './Picker';
-import { REMINDER_TIMES, enablePush, pushState } from '../lib/push';
+import { enablePush, pushState } from '../lib/push';
 
 const KM_TARGETS = [0, 2, 3, 5, 8];
 
@@ -58,7 +58,7 @@ export function JoinSheet({ c, onClose, onJoined }: { c: Challenge | null; onClo
         <div className="card stack tight">
           <p><span className="strong">Daily reminder</span> <span className="small muted">· optional</span></p>
           <p className="small muted">We’ll send a phone notification on days you haven’t logged yet.</p>
-          <Picker title="Remind me at" value={rem ?? (c.category === 'habit' ? '20:00' : '')} options={REMINDER_TIMES} search={false} onChange={(v) => setRem(v)} />
+          <ReminderPicker title="Remind me at" value={rem ?? (c.category === 'habit' ? '20:00' : '')} onChange={(v) => setRem(v)} />
         </div>
         <ErrorText>{err}</ErrorText>
         <Button

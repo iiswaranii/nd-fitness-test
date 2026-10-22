@@ -675,3 +675,31 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .check-ring.miss .ic { stroke-width: 2.6; width: 20px; height: 20px; }
 .hrow.missed { background: color-mix(in srgb, var(--bad) 6%, transparent); }
 .card.hero.missed { border-color: color-mix(in srgb, var(--bad) 40%, transparent); }
+
+/* ---------- iPhone-style time wheels ---------- */
+.wheels { position: relative; display: flex; justify-content: center; align-items: center; gap: 2px; padding: 4px 0; user-select: none; -webkit-user-select: none; }
+.wheel-band { position: absolute; left: 50%; top: 50%; width: min(260px, 100%); height: 40px; transform: translate(-50%, -50%); border-radius: 12px; background: color-mix(in srgb, var(--ink) 8%, transparent); pointer-events: none; }
+.wheel { position: relative; overflow-y: scroll; scroll-snap-type: y mandatory; scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  -webkit-mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); mask-image: linear-gradient(transparent, #000 30%, #000 70%, transparent); outline: none; }
+.wheel::-webkit-scrollbar { display: none; }
+.wheel-i { scroll-snap-align: center; display: grid; place-items: center; font-family: var(--font-d); font-size: 21px; font-weight: 500; color: var(--muted); font-variant-numeric: tabular-nums; cursor: pointer; transition: color .15s, transform .15s; }
+.wheel-i.on { color: var(--ink); font-weight: 600; transform: scale(1.06); }
+.wheel-colon { position: relative; font-family: var(--font-d); font-size: 21px; font-weight: 600; color: var(--ink); margin: 0 -2px; }
+.wheel:focus-visible { box-shadow: 0 0 0 2px var(--focus); border-radius: 10px; }
+
+/* ---------- brand + guide ---------- */
+.brand-bar { display: flex; align-items: center; gap: 8px; font-family: var(--font-d); font-size: 13.5px; font-weight: 700; letter-spacing: -.01em; color: var(--ink-2); }
+.brand-bar .brand-mark { border-radius: 7px; overflow: hidden; }
+.app-foot { display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; padding: 8px 0 4px; }
+.app-foot .brand-mark { margin-bottom: 4px; }
+.guide-card { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 14px; border-radius: 18px; border: 1px solid var(--card-line); background: var(--surface); box-shadow: var(--shadow); color: inherit; font: inherit; }
+.guide-card .gi { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: color-mix(in srgb, #FF3D7F 14%, transparent); color: #FF3D7F; flex: none; }
+.gstep { display: flex; flex-direction: column; gap: 12px; }
+.gstep-h { display: flex; align-items: center; gap: 10px; }
+.gstep-h .n { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--btn); color: var(--btn-ink); font-weight: 800; font-size: 14px; flex: none; }
+.gstep-h b { font-size: 17px; font-weight: 800; letter-spacing: -.01em; }
+.gshot { align-self: center; width: min(260px, 72vw); border-radius: 26px; padding: 6px; background: #0B0C10; box-shadow: 0 14px 30px -14px rgb(0 0 0 / .45); }
+.gshot img { display: block; width: 100%; border-radius: 20px; }
+.gflow { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
+.gflow span { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 99px; background: var(--surface-2); font-weight: 700; font-size: 13.5px; }
+.gflow i { color: var(--muted); font-style: normal; }

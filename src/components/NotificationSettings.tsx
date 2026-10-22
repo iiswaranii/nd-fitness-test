@@ -1,6 +1,6 @@
+import { ReminderPicker, fmtReminder } from './TimeWheel';
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
-import { Picker } from './Picker';
 import { useToast } from './Toast';
 import { useSession } from '../lib/session';
 import { useStore } from '../lib/store';
@@ -8,7 +8,7 @@ import { auth } from '../lib/auth';
 import { data } from '../lib/data';
 import { status } from '../lib/progress';
 import { lookOf } from '../lib/look';
-import { REMINDER_TIMES, disablePush, enablePush, pushState, testNotification, type PushState } from '../lib/push';
+import { disablePush, enablePush, pushState, testNotification, type PushState } from '../lib/push';
 import { friendlyError } from '../lib/errors';
 
 const STATE_TEXT: Record<PushState, string> = {
@@ -83,12 +83,12 @@ export function NotificationSettings() {
                   <span className="sp"><Icon name={look.icon} /></span>
                   <span className="grow strong" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</span>
                   <div style={{ width: 132, flex: 'none' }}>
-                    <Picker compact title={`Remind me · ${c.title}`} value={c.my_reminder ?? ''} options={REMINDER_TIMES} search={false}
+                    <ReminderPicker compact title={`Remind me · ${c.title}`} value={c.my_reminder ?? ''}
                       onChange={async (v) => {
                         try {
                           if (v && !on) { const r = await enablePush(); setSt(r); }
                           await data.setReminder(c.id, v || null); await reload();
-                          toast(v ? `Reminder set for ${REMINDER_TIMES.find((x) => x.value === v)?.label}` : 'Reminder off');
+                          toast(v ? `Reminder set for ${fmtReminder(v)}` : 'Reminder off');
                         } catch (err) { toast(friendlyError(err)); }
                       }} />
                   </div>

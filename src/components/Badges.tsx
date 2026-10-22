@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
 import { Sheet } from './Sheet';
 import { useStore } from '../lib/store';
@@ -41,22 +42,23 @@ export function usePlacings(): Placings {
 }
 
 /** Profile badges: podium places, milestones, streaks and taking part. Earned first; locked ones show how to earn them. */
-export function Badges() {
+export function Badges({ full = false }: { full?: boolean }) {
+  const nav = useNavigate();
   const { challenges, allActivities: activities, logs } = useStore();
   const [open, setOpen] = useState<Badge | null>(null);
-  const [all, setAll] = useState(false);
 
   const placings = usePlacings();
 
   const badges = useMemo(() => computeBadges(challenges, activities, logs, placings), [challenges, activities, logs, placings]);
   const earned = badges.filter((b) => b.earned);
   const next = badges.filter((b) => !b.earned).sort((a, b) => (b.progress ? b.progress.now / b.progress.goal : 0) - (a.progress ? a.progress.now / a.progress.goal : 0));
-  const list = all ? [...earned, ...next] : [...earned, ...next].slice(0, Math.max(6, earned.length + 3));
+  // Profile: one short row (earned first). Full screen: everything.
+  const list = full ? [...earned, ...next] : [...earned, ...next].slice(0, 3);
 
   return (
     <section className="stack tight">
       <div className="sec-h">
-        <h2 className="h2">Badges</h2>
+        {full ? <span /> : <h2 className="h2">Badges</h2>}
         <span className="small muted">{earned.length} of {badges.length} earned</span>
       </div>
       <div className="card">
@@ -70,7 +72,7 @@ export function Badges() {
             </button>
           ))}
         </div>
-        <button className="link-btn" style={{ width: '100%' }} onClick={() => setAll((a) => !a)}>{all ? 'Show fewer' : `See all ${badges.length} badges`}</button>
+        {!full ? <button className="link-btn" style={{ width: '100%' }} onClick={() => nav('/badges')}>See all {badges.length} badges</button> : null}
       </div>
       <Sheet open={!!open} onClose={() => setOpen(null)} label={open?.name ?? 'Badge'}>
         {open ? (
