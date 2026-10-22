@@ -6,7 +6,8 @@
  * Skipped when the device asks for reduced motion.
  */
 const HAPPY = ['#F5B92E', '#3BC17A', '#FF6B8B', '#3DAAF2', '#FF8A3D', '#A78BFA'];
-const SAD = ['#8FA3B8', '#7FA6CF', '#A3AEC2', '#6F8FB3'];
+const FACE = ['#FFCC33', '#FFC21A', '#FFD54F', '#F9B90F'];
+const DROPC = ['#7FB6E6', '#5FA3DD'];
 
 const HEART = '<path d="M12 21s-7.5-4.6-9.6-9.2C1 8.6 3 5 6.4 5c2 0 3.6 1.1 4.6 2.7C12 6.1 13.6 5 15.6 5 19 5 21 8.6 21.6 11.8 19.5 16.4 12 21 12 21z"/>';
 const STAR = '<path d="M12 2.5l2.8 6.1 6.7.7-5 4.5 1.4 6.6L12 17l-5.9 3.4 1.4-6.6-5-4.5 6.7-.7z"/>';
@@ -16,7 +17,9 @@ const SPARK = '<path d="M12 1.5l2.2 8.3 8.3 2.2-8.3 2.2L12 22.5l-2.2-8.3L1.5 12l
 const SADFACE = '<circle cx="12" cy="12" r="10.5"/><circle cx="8.4" cy="10" r="1.4" fill="#1F2A37"/><circle cx="15.6" cy="10" r="1.4" fill="#1F2A37"/><path d="M8 17.2c1.1-1.6 2.5-2.3 4-2.3s2.9.7 4 2.3" fill="none" stroke="#1F2A37" stroke-width="1.6" stroke-linecap="round"/>';
 const DROP = '<path d="M12 2.5C9 7 6 10.4 6 14a6 6 0 0 0 12 0c0-3.6-3-7-6-11.5z"/>';
 
-const reduced = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+/** Many Android phones turn on “reduce motion” with battery saver, so we don't skip — we just play a lighter version. */
+const reduced = () => !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+const canAnimate = () => typeof document !== 'undefined' && typeof Element !== 'undefined' && 'animate' in Element.prototype;
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 function layer() {
@@ -30,7 +33,9 @@ function layer() {
 function piece(root: HTMLElement, shape: string, color: string, size: number, x: number, y: number) {
   const el = document.createElement('span');
   el.innerHTML = `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="${color}">${shape}</svg>`;
-  el.style.left = `${x}px`; el.style.top = `${y}px`;
+  // Centre on (x, y) with plain pixels — no calc()/percent inside animated transforms (older Android WebViews).
+  el.style.left = `${x - size / 2}px`; el.style.top = `${y - size / 2}px`;
+  el.style.width = `${size}px`; el.style.height = `${size}px`;
   root.appendChild(el);
   return el;
 }
@@ -41,7 +46,7 @@ function arc(vx: number, vy: number, g: number, spin: number, steps = 8): Keyfra
     const t = i / steps;
     const x = vx * t, y = vy * t + g * t * t;
     return {
-      transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px)) rotate(${spin * t}deg) scale(${i === 0 ? 0.3 : 1})`,
+      transform: `translate(${x}px, ${y}px) rotate(${spin * t}deg) scale(${i === 0 ? 0.3 : 1})`,
       opacity: i === 0 ? 0 : t > 0.75 ? (1 - t) * 4 : 1,
       offset: t,
     };
@@ -53,7 +58,7 @@ function popToast() {
 }
 
 export function celebrate(big = false) {
-  if (typeof document === 'undefined' || reduced()) return;
+  if (!canAnimate()) return;
   requestAnimationFrame(() => requestAnimationFrame(() => {
     popToast();
     const W = window.innerWidth, H = window.innerHeight;
@@ -66,7 +71,7 @@ export function celebrate(big = false) {
       root.appendChild(ring);
     }
     const shapes = [HEART, STAR, DOT, STRIP, SPARK, HEART, STAR];
-    const n = big ? 54 : 40;
+    const n = Math.round((big ? 54 : 40) * (reduced() ? 0.5 : 1));
     const reach = Math.max(W, H) * 0.55;
     let longest = 0;
     for (let i = 0; i < n; i++) {
@@ -83,16 +88,16 @@ export function celebrate(big = false) {
 }
 
 export function commiserate() {
-  if (typeof document === 'undefined' || reduced()) return;
+  if (!canAnimate()) return;
   requestAnimationFrame(() => requestAnimationFrame(() => {
     const W = window.innerWidth, H = window.innerHeight;
     const cx = W / 2, cy = H * 0.42;
     const root = layer();
-    const n = 22;
+    const n = reduced() ? 12 : 22;
     let longest = 0;
     for (let i = 0; i < n; i++) {
       const face = i % 3 !== 2;
-      const el = piece(root, face ? SADFACE : DROP, SAD[i % SAD.length], face ? rnd(20, 30) : rnd(12, 18), cx, cy);
+      const el = piece(root, face ? SADFACE : DROP, face ? FACE[i % FACE.length] : DROPC[i % DROPC.length], face ? rnd(20, 30) : rnd(12, 18), cx, cy);
       // A soft puff outwards, then a slow, swaying drift down.
       const ang = rnd(0, Math.PI * 2);
       const sp = rnd(0.25, 0.5) * W;
@@ -102,10 +107,10 @@ export function commiserate() {
       const dur = rnd(2200, 3000), delay = rnd(0, 250);
       longest = Math.max(longest, dur + delay);
       el.animate([
-        { transform: 'translate(-50%, -50%) scale(.3)', opacity: 0 },
-        { transform: `translate(calc(-50% + ${ox}px), calc(-50% + ${oy}px)) scale(1)`, opacity: 0.9, offset: 0.22 },
-        { transform: `translate(calc(-50% + ${ox + sway}px), calc(-50% + ${oy + down * 0.45}px)) rotate(${sway / 2}deg)`, opacity: 0.85, offset: 0.6 },
-        { transform: `translate(calc(-50% + ${ox - sway}px), calc(-50% + ${oy + down}px)) rotate(${-sway / 2}deg)`, opacity: 0 },
+        { transform: 'translate(0px, 0px) rotate(0deg) scale(.3)', opacity: 0 },
+        { transform: `translate(${ox}px, ${oy}px) rotate(0deg) scale(1)`, opacity: 0.95, offset: 0.22 },
+        { transform: `translate(${ox + sway}px, ${oy + down * 0.45}px) rotate(${sway / 2}deg) scale(1)`, opacity: 0.9, offset: 0.6 },
+        { transform: `translate(${ox - sway}px, ${oy + down}px) rotate(${-sway / 2}deg) scale(1)`, opacity: 0 },
       ], { duration: dur, delay, easing: 'ease-out', fill: 'both' });
     }
     window.setTimeout(() => root.remove(), longest + 150);
