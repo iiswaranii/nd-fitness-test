@@ -42,7 +42,7 @@ export function usePlacings(): Placings {
 
 /** Profile badges: podium places, milestones, streaks and taking part. Earned first; locked ones show how to earn them. */
 export function Badges() {
-  const { challenges, activities, logs } = useStore();
+  const { challenges, allActivities: activities, logs } = useStore();
   const [open, setOpen] = useState<Badge | null>(null);
   const [all, setAll] = useState(false);
 

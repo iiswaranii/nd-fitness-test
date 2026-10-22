@@ -51,6 +51,8 @@ export type Activity = {
   elapsed_s: number;
   elev_m: number | null;
   source: 'sync' | 'link' | 'manual';
+  /** Set when the member removed it in the app. It still counts for challenges that had already finished. */
+  removed_at?: string | null;
   /** The link the member pasted (test mode can't resolve short links). */
   url?: string;
 };

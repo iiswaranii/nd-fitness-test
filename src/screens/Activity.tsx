@@ -116,7 +116,7 @@ export default function Activity() {
                 try { await data.removeActivity(del.id); await reload(); setDel(null); toast('Activity deleted'); }
                 catch (e) { toast(friendlyError(e)); } finally { setBusy(false); }
               }}><Icon name="trash" />Delete this activity</Button>
-              <p className="legal">Deleting it here removes it from your challenges. Nothing changes on Strava, and you can add it again with its link.</p>
+              <p className="legal">Deleting removes it from your list and from live challenges. Challenges that have already finished keep it, so their results don’t change. Nothing changes on Strava, and you can add it back with its link.</p>
             </div>
           </>
         ) : null}

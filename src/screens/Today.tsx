@@ -224,7 +224,7 @@ function ProgressCarousel({ items, onOpenHabit }: { items: Challenge[]; onOpenHa
 
 function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge) => void }) {
   const nav = useNavigate();
-  const { activities, logs } = useStore();
+  const { allActivities: activities, logs } = useStore();
   const p = progress(c, activities, logs);
   const look = lookOf(c);
   const h = habitByKey(c.habit_key);

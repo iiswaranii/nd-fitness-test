@@ -20,7 +20,7 @@ export function StatusPill({ c, done }: { c: Challenge; done?: boolean }) {
 /** Card for a joined, active or finished challenge: progress bar and numbers. */
 export function ChallengeCard({ c }: { c: Challenge }) {
   const nav = useNavigate();
-  const { activities, logs, newIds } = useStore();
+  const { allActivities: activities, logs, newIds } = useStore();
   const look = lookOf(c);
   const st = status(c);
   const p = c.joined && st !== 'upcoming' ? progress(c, activities, logs) : null;

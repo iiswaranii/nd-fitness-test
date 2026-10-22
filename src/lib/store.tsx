@@ -4,12 +4,16 @@ import { refreshPushSubscription } from './push';
 import { useSession } from './session';
 import { friendlyError } from './errors';
 import type { Activity, Challenge, HabitLog } from './types';
+import { visibleActivities } from './progress';
 
 type Store = {
   loading: boolean;
   error: string | null;
   challenges: Challenge[];
+  /** The member's activities (removed ones left out). */
   activities: Activity[];
+  /** Including removed ones: pass these to progress(), which keeps them for challenges that had finished. */
+  allActivities: Activity[];
   logs: HabitLog[];
   reload: () => Promise<void>;
   saveLog: (challengeId: string, date: string, value: number | null, entries: number[]) => Promise<void>;
@@ -87,10 +91,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     catch (e) { setLogs(prev); throw e; }
   }, [logs]);
 
+  const visible = useMemo(() => visibleActivities(activities), [activities]);
   const value = useMemo<Store>(() => ({
-    loading, error, challenges, activities, logs, reload, saveLog,
+    loading, error, challenges, activities: visible, allActivities: activities, logs, reload, saveLog,
     isAdmin: profile?.role === 'admin', newIds, markSeen,
-  }), [loading, error, challenges, activities, logs, reload, saveLog, profile?.role, newIds, markSeen]);
+  }), [loading, error, challenges, activities, visible, logs, reload, saveLog, profile?.role, newIds, markSeen]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

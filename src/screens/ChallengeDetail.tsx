@@ -29,7 +29,7 @@ export default function ChallengeDetail() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
-  const { challenges, activities, logs, reload, loading, markSeen } = useStore();
+  const { challenges, allActivities: activities, logs, reload, loading, markSeen } = useStore();
   const c = challenges.find((x) => x.id === id);
   useEffect(() => { if (c) markSeen(c.id); }, [c, markSeen]);
   const [tick, setTick] = useState(0);

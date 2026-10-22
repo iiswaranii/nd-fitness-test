@@ -49,8 +49,10 @@ Deno.serve(async (req) => {
     if (!id && typeof body.shortUrl === 'string') id = await resolveShortLink(body.shortUrl).catch(() => null);
     if (!id) return json({ error: 'We couldn’t find an activity in that link. In Strava, open the activity, tap Share, then Copy link.' }, 400);
 
-    const { data: dup } = await db.from('activities').select('user_id').eq('id', id).maybeSingle();
-    if (dup) return json({ error: dup.user_id === user.id ? 'You’ve already added this activity.' : 'This activity was already added by another member.' }, 409);
+    const { data: dup } = await db.from('activities').select('user_id, removed_at').eq('id', id).maybeSingle();
+    // An activity the member removed earlier can be added again (it comes back instead of being a duplicate).
+    const restoring = !!dup && dup.user_id === user.id && !!dup.removed_at;
+    if (dup && !restoring) return json({ error: dup.user_id === user.id ? 'You’ve already added this activity.' : 'This activity was already added by another member.' }, 409);
 
     const headers = { 'User-Agent': BROWSER_UA, 'Accept-Language': 'en-GB,en;q=0.9' };
 
@@ -167,7 +169,9 @@ Deno.serve(async (req) => {
       source,
       synced_at: new Date().toISOString(),
     };
-    const { error } = await db.from('activities').insert(row);
+    const { error } = restoring
+      ? await db.from('activities').update({ ...row, removed_at: null }).eq('id', id).eq('user_id', user.id)
+      : await db.from('activities').insert(row);
     if (error) throw error;
     return json({ activity: row, athleteName: athleteName ?? me?.strava_athlete_name ?? 'Strava athlete', firstLink });
   } catch (e) {

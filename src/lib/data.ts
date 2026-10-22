@@ -88,10 +88,10 @@ async function uid(): Promise<string> {
   if (!data.user) throw new Error('Please log in again.');
   return data.user.id;
 }
-type ActRow = { id: number | string; sport: Sport; name: string; local_date: string; local_time: string; distance_m: number; moving_s: number; elapsed_s: number; elev_m: number | null; source: 'sync' | 'link' | 'manual' };
+type ActRow = { id: number | string; sport: Sport; name: string; local_date: string; local_time: string; distance_m: number; moving_s: number; elapsed_s: number; elev_m: number | null; source: 'sync' | 'link' | 'manual'; removed_at?: string | null };
 const toAct = (r: ActRow): Activity => ({
   id: String(r.id), sport: r.sport, name: r.name, date: r.local_date, time: String(r.local_time).slice(0, 5),
-  km: Number(r.distance_m) / 1000, moving_s: r.moving_s, elapsed_s: r.elapsed_s, elev_m: r.elev_m, source: r.source,
+  km: Number(r.distance_m) / 1000, moving_s: r.moving_s, elapsed_s: r.elapsed_s, elev_m: r.elev_m, source: r.source, removed_at: r.removed_at ?? null,
 });
 async function fnError(error: unknown): Promise<Error> {
   const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
@@ -195,7 +195,7 @@ const supabaseData: DataApi = {
     return { activity: toAct(data.activity as ActRow), athleteName: String(data.athleteName ?? ''), firstLink: !!data.firstLink };
   },
   async removeActivity(id) {
-    const { error } = await sb().from('activities').delete().eq('id', id).eq('user_id', await uid());
+    const { error } = await sb().rpc('remove_activity', { aid: Number(id) });
     if (error) throw error;
   },
   async participants(challengeId) {
@@ -384,7 +384,7 @@ const demoData: DataApi = {
   },
   async removeActivity(id) {
     const s = load(), m = await me();
-    s.activities[m.id] = (s.activities[m.id] ?? []).filter((a) => a.id !== id);
+    s.activities[m.id] = (s.activities[m.id] ?? []).map((a) => (a.id === id && !a.removed_at ? { ...a, removed_at: new Date().toISOString() } : a));
     save(s);
   },
   async participants(cid) {

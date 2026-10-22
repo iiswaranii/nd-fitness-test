@@ -59,7 +59,17 @@ export function goalText(c: Challenge): string {
   return `${c.target} ${c.sport === 'walk' ? 'walks' : c.sport === 'run' ? 'runs' : 'rides'} of ${c.min_km} km or more`;
 }
 
-export function progress(c: Challenge, acts: Activity[], logs: HabitLog[]): Progress {
+/** A removed activity still counts for a challenge that had already finished when it was removed. */
+export function countsFor(c: Pick<Challenge, 'end_date'>, a: Activity): boolean {
+  if (!a.removed_at) return true;
+  const r = new Date(a.removed_at);
+  const day = `${r.getFullYear()}-${String(r.getMonth() + 1).padStart(2, '0')}-${String(r.getDate()).padStart(2, '0')}`;
+  return day > c.end_date;
+}
+export const visibleActivities = (acts: Activity[]) => acts.filter((a) => !a.removed_at);
+
+export function progress(c: Challenge, allActs: Activity[], logs: HabitLog[]): Progress {
+  const acts = allActs.filter((a) => countsFor(c, a));
   const t = today();
   const end = c.end_date < t ? c.end_date : t;
   let value = 0, counted: Activity[] = [], metDays: string[] = [], todayValue: number | null = null, todayMet = false;

@@ -301,7 +301,7 @@ function TimeLogger({ h, target, value, commit, busy }: { h: Habit; target: numb
 /** Scroll down in the logger: what this challenge is, its dates and your progress so far. */
 function ChallengeInfo({ c, onClose }: { c: Challenge; onClose: () => void }) {
   const nav = useNavigate();
-  const { activities, logs } = useStore();
+  const { allActivities: activities, logs } = useStore();
   const p = progress(c, activities, logs);
   return (
     <section className="stack tight" style={{ borderTop: '1px solid var(--line)', paddingTop: 16 }}>

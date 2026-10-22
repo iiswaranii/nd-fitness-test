@@ -18,7 +18,7 @@ export default function Challenges() {
   const tab = (params.get('tab') as Tab) || 'joined';
   const [kind, setKind] = useState<Kind>('all');
   const [joinC, setJoinC] = useState<Challenge | null>(null);
-  const { challenges, activities, logs, reload, loading, newIds } = useStore();
+  const { challenges, allActivities: activities, logs, reload, loading, newIds } = useStore();
 
   const byKind = (c: Challenge) => kind === 'all' || c.category === kind;
   const live = (c: Challenge) => status(c) === 'active' || status(c) === 'upcoming';
