@@ -2,59 +2,70 @@ import { useNavigate } from 'react-router-dom';
 import { Trophy, type Tier } from './Trophy';
 import { usePlacings } from './Badges';
 import { useStore } from '../lib/store';
-import { progress, status } from '../lib/progress';
+import { hasBoard } from '../lib/board';
+import { status } from '../lib/progress';
+import { fmtDay } from '../lib/dates';
 
-type Cup = { id: string; title: string; tier: Tier; rank?: number; what: string; end: string };
-const ORD = ['', '1st', '2nd', '3rd'];
+type Cup = { id: string; title: string; tier: Tier; rank: 1 | 2 | 3; of: number; end: string };
+const ORD = { 1: '1st', 2: '2nd', 3: '3rd' } as const;
+const TIER = { 1: 'gold', 2: 'silver', 3: 'bronze' } as const;
 
 /**
- * Trophies on wooden shelves: a gold / silver / bronze cup for each podium finish, and a blue cup for each
- * challenge completed. Empty spots show what's still to win.
+ * Trophy cabinet: one trophy for every finished leaderboard challenge where the member came 1st, 2nd or 3rd.
+ * Gold / silver / bronze, with the place on the cup and on a ribbon above it.
  */
 export function TrophyRack() {
   const nav = useNavigate();
-  const { challenges, activities, logs } = useStore();
+  const { challenges } = useStore();
   const placings = usePlacings();
 
   const cups: Cup[] = challenges
-    .filter((c) => c.joined && status(c) === 'finished')
+    .filter((c) => c.joined && status(c) === 'finished' && hasBoard(c))
     .map((c): Cup | null => {
       const pl = placings[c.id];
-      if (pl && pl.rank <= 3) {
-        return { id: c.id, title: c.title, tier: pl.rank === 1 ? 'gold' : pl.rank === 2 ? 'silver' : 'bronze', rank: pl.rank, what: `${ORD[pl.rank]} of ${pl.of}`, end: c.end_date };
-      }
-      if (progress(c, activities, logs).done) return { id: c.id, title: c.title, tier: 'blue', what: 'Completed', end: c.end_date };
-      return null;
+      if (!pl || pl.rank > 3) return null;
+      const r = pl.rank as 1 | 2 | 3;
+      return { id: c.id, title: c.title, tier: TIER[r], rank: r, of: pl.of, end: c.end_date };
     })
     .filter((x): x is Cup => !!x)
-    .sort((a, b) => (a.rank ?? 9) - (b.rank ?? 9) || b.end.localeCompare(a.end));
+    .sort((a, b) => a.rank - b.rank || b.end.localeCompare(a.end));
 
+  const count = (r: 1 | 2 | 3) => cups.filter((c) => c.rank === r).length;
+  const rows: (Cup | null)[][] = [];
   const slots = Math.max(3, Math.ceil(cups.length / 3) * 3);
-  const golds = cups.filter((c) => c.tier === 'gold').length;
+  for (let i = 0; i < slots; i += 3) rows.push([0, 1, 2].map((k) => cups[i + k] ?? null));
 
   return (
     <section className="stack tight">
       <div className="sec-h">
-        <h2 className="h2">Trophy rack</h2>
-        <span className="small muted">{cups.length ? `${cups.length} ${cups.length === 1 ? 'trophy' : 'trophies'}${golds ? ` · ${golds} gold` : ''}` : 'No trophies yet'}</span>
+        <h2 className="h2">Trophy cabinet</h2>
+        {cups.length ? (
+          <span className="tally" aria-label={`${count(1)} gold, ${count(2)} silver, ${count(3)} bronze`}>
+            <span className="t-g">{count(1)}</span><span className="t-s">{count(2)}</span><span className="t-b">{count(3)}</span>
+          </span>
+        ) : null}
       </div>
-      <div className="card">
-        <div className="rack">
-          {Array.from({ length: slots }).map((_, i) => {
-            const c = cups[i];
-            const slot = c ? (
-              <button key={c.id} className="slot" onClick={() => nav(`/c/${c.id}`)} aria-label={`${c.title}: ${c.what}`}>
-                <Trophy tier={c.tier} rank={c.rank} size={c.rank === 1 ? 60 : 52} />
-                <span className="tn">{c.title}</span>
-                <span className="tm">{c.what}</span>
-              </button>
-            ) : (
-              <div key={`e${i}`} className="slot empty" aria-hidden="true"><Trophy tier="gold" size={52} /><span className="tn">&nbsp;</span></div>
-            );
-            return (i + 1) % 3 === 0 ? [slot, <div key={`s${i}`} className="shelf" />] : slot;
-          })}
-        </div>
-        {!cups.length ? <p className="small muted" style={{ textAlign: 'center' }}>Finish a challenge to put your first trophy here. A top‑3 place earns gold, silver or bronze.</p> : null}
+      <div className="cabinet">
+        {rows.map((row, ri) => (
+          <div key={ri} className="cab-row">
+            <div className="cab-slots">
+              {row.map((c, i) => c ? (
+                <button key={c.id} className={`cup r${c.rank}`} onClick={() => nav(`/c/${c.id}`)} aria-label={`${ORD[c.rank]} place in ${c.title}, out of ${c.of}`}>
+                  <span className="glow" aria-hidden="true" />
+                  <span className="ribbon">{c.rank}</span>
+                  <Trophy tier={c.tier} rank={c.rank} size={c.rank === 1 ? 66 : 58} />
+                  <span className="plaque"><b>{c.title}</b><i>{ORD[c.rank]} of {c.of} · {fmtDay(c.end)}</i></span>
+                </button>
+              ) : (
+                <div key={`e${ri}${i}`} className="cup empty" aria-hidden="true"><Trophy tier="silver" size={54} /><span className="plaque"><b>&nbsp;</b><i>&nbsp;</i></span></div>
+              ))}
+            </div>
+            <div className="cab-shelf" />
+          </div>
+        ))}
+        {!cups.length ? (
+          <p className="cab-note">Finish 1st, 2nd or 3rd on a challenge leaderboard to put your first trophy here.</p>
+        ) : null}
       </div>
     </section>
   );
