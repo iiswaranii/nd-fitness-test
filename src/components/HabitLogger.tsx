@@ -12,7 +12,7 @@ import { dayMet, fmtAmount, fmtClock, habitByKey, habitGoalText, type Habit } fr
 import { addDays, parse, relDay, today } from '../lib/dates';
 import { friendlyError } from '../lib/errors';
 import { lookOf } from '../lib/look';
-import { celebrate } from '../lib/celebrate';
+import { celebrate, commiserate } from '../lib/celebrate';
 import type { Challenge } from '../lib/types';
 
 /** How many days back a member may log or correct. */
@@ -35,8 +35,9 @@ export function HabitLogger({ c, open, onClose }: { c: Challenge | null; open: b
   );
 }
 
-/** cheer: float a few emojis up after a successful log (not for “Not today” or deletes). */
-type Commit = (value: number | null, entries: number[], msg: string, cheer?: boolean) => Promise<void>;
+/** mood: 'happy' = confetti after a good log, 'sad' = gentle sad faces for a missed day, omitted for deletes. */
+type Mood = 'happy' | 'sad';
+type Commit = (value: number | null, entries: number[], msg: string, mood?: Mood | boolean) => Promise<void>;
 
 function LoggerBody({ c, onClose }: { c: Challenge; onClose: () => void }) {
   const h = habitByKey(c.habit_key);
@@ -56,13 +57,14 @@ function LoggerBody({ c, onClose }: { c: Challenge; onClose: () => void }) {
   const dayLabel = day === t ? 'today' : relDay(day).toLowerCase() === 'yesterday' ? 'yesterday' : relDay(day);
 
   // Save, close the sheet, confirm.
-  const commit: Commit = async (value, entries, msg, cheer) => {
+  const commit: Commit = async (value, entries, msg, mood) => {
     setErr(null); setBusy(true);
     try {
       await saveLog(c.id, day, value, entries);
       onClose();
       toast(msg);
-      if (cheer) celebrate(reachedGoal(value));
+      if (mood === true || mood === 'happy') celebrate(reachedGoal(value));
+      else if (mood === false || mood === 'sad') commiserate();
     } catch (e) { setErr(friendlyError(e)); }
     finally { setBusy(false); }
   };
@@ -225,7 +227,7 @@ function AmountLogger({ h, target, value, entries, commit, busy, dayLabel }: {
           const v = parseFloat(edit);
           if (isWeight) { if (v >= 20 && v <= 250) commit(+v.toFixed(1), [v], `Weight saved for ${dayLabel}`, true); return; }
           if (edit.trim() === '') { commit(null, [], `Cleared ${dayLabel}’s entry`); return; }
-          if (v >= 0) commit(+v.toFixed(2), [v], `Updated: ${fmtAmount(v, h.unit)} ${dayLabel}`, atMost ? v <= target : v > 0);
+          if (v >= 0) commit(+v.toFixed(2), [v], `Updated: ${fmtAmount(v, h.unit)} ${dayLabel}`, atMost ? (v <= target ? 'happy' : 'sad') : v > 0 ? 'happy' : undefined);
         }}>
           <label className="label" htmlFor="tot">{isWeight ? `Weight ${dayLabel} (kg)` : `Total for ${dayLabel} (${h.unit})`}</label>
           <input id="tot" className="input" style={{ fontFamily: 'var(--font-d)', fontSize: 22, textAlign: 'center' }} type="number" inputMode="decimal" min="0" step={h.step ?? 1}
