@@ -16,6 +16,7 @@ import { validateName } from '../lib/validation';
 import { data } from '../lib/data';
 import { Badges } from '../components/Badges';
 import { TrophyRack } from '../components/TrophyRack';
+import { StravaProfileLink } from '../components/StravaProfileLink';
 import { NotificationSettings } from '../components/NotificationSettings';
 import { BodyFields, DobField, LocationFields, MobileField, mobileFrom, mobileValue, validateBody, validateDob, validateLoc, validateMobile, type Body, type Loc, type Mobile } from '../components/DetailsFields';
 import { useStore } from '../lib/store';
@@ -32,6 +33,7 @@ export default function Profile() {
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [editing, setEditing] = useState<'details' | null>(null);
+  const [linkSheet, setLinkSheet] = useState(false);
   const [dob, setDob] = useState('');
   const [loc, setLoc] = useState<Loc>({ country: '', state: '', city: '' });
   const [health, setHealth] = useState<Health | null>(null);
@@ -94,14 +96,25 @@ export default function Profile() {
         <div className="stack tight">
           <h2 className="h2">Strava</h2>
           <div className="list">
-            <button className="list-row" onClick={() => nav('/activity')}>
-              <span className="sp" style={{ ['--c' as string]: 'var(--strava)' }}><Icon name="link" /></span>
-              <span className="grow">
-                <span className="strong" style={{ display: 'block' }}>{profile?.strava_connected ? (profile.strava_athlete_name ?? 'Your Strava account') : 'Not linked yet'}</span>
-                <span className="small muted">{profile?.strava_connected ? 'Only this athlete’s activities can be added. To change it, ask an admin.' : 'Your first activity link sets this'}</span>
-              </span>
-              <Icon name="chev" />
-            </button>
+            {profile?.strava_athlete_id ? (
+              <button className="list-row" onClick={() => nav('/activity')}>
+                <span className="sp" style={{ ['--c' as string]: 'var(--strava)' }}><Icon name="link" /></span>
+                <span className="grow">
+                  <span className="strong" style={{ display: 'block' }}>{profile.strava_athlete_name ?? 'Your Strava profile'}</span>
+                  <span className="small muted">Linked · only activities you recorded can be added. To change it, ask an admin.</span>
+                </span>
+                <Icon name="chev" />
+              </button>
+            ) : (
+              <button className="list-row" onClick={() => setLinkSheet(true)}>
+                <span className="sp" style={{ ['--c' as string]: 'var(--strava)' }}><Icon name="link" /></span>
+                <span className="grow">
+                  <span className="strong" style={{ display: 'block' }}>Link your Strava profile</span>
+                  <span className="small muted">Needed before you add activities</span>
+                </span>
+                <Icon name="chev" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -176,6 +189,9 @@ export default function Profile() {
           <ErrorText>{err}</ErrorText>
           <Button type="submit" loading={saving}>Save</Button>
         </form>
+      </Sheet>
+      <Sheet open={linkSheet} onClose={() => setLinkSheet(false)} label="Link your Strava profile">
+        {linkSheet ? <StravaProfileLink onDone={() => setLinkSheet(false)} /> : null}
       </Sheet>
     </Page>
   );

@@ -1,6 +1,6 @@
 import { supabase } from './supabase';
 import { DEMO_AUTH } from './config';
-import { auth, demoAllProfiles, demoLinkStrava } from './auth';
+import { auth, demoAllProfiles, demoLinkStrava, demoLinkStravaProfile } from './auth';
 import { today } from './dates';
 import { ageBand, ageOn, matches } from './audience';
 import { SPORTS, type Activity, type Challenge, type HabitLog, type Health, type MemberStat, type NewChallenge, type Participant, type Sport } from './types';
@@ -27,6 +27,8 @@ export interface DataApi {
    * Reads a Strava activity from a pasted link and saves it. When Strava doesn't show the numbers publicly,
    * returns { needsStats } with what it could read; call again with `manual` (distance and time from Strava).
    */
+  /** Link the member's Strava profile (its share link). Activities are then accepted only from this athlete. */
+  linkStravaProfile(url: string): Promise<{ athleteId: string; athleteName: string | null }>;
   /** confirm=true saves Strava's own numbers (the server reads them again; the app sends none). */
   addActivityByLink(text: string, manual?: ManualStats, confirm?: boolean): Promise<LinkResult>;
   removeActivity(id: string): Promise<void>;
@@ -178,6 +180,11 @@ const supabaseData: DataApi = {
     }
     const { error } = await sb().from('habit_logs').upsert({ user_id: me, challenge_id: challengeId, day: date, value, entries });
     if (error) throw error;
+  },
+  async linkStravaProfile(url) {
+    const { data, error } = await sb().functions.invoke('strava-activity', { body: { action: 'link-profile', url } });
+    if (error) throw await fnError(error);
+    return { athleteId: String(data.athleteId), athleteName: data.athleteName ?? null };
   },
   async addActivityByLink(text, manual, confirm) {
     const p = parseStravaLink(text);
@@ -346,6 +353,11 @@ const demoData: DataApi = {
     if (value !== null) list.push({ challenge_id: cid, date, value, entries });
     s.logs[m.id] = list;
     save(s);
+  },
+  async linkStravaProfile(url) {
+    await wait(500);
+    if (!/strava\.(com\/athletes\/\d+|app\.link\/\w+)/.test(url)) throw new Error('That isn’t a Strava profile link. In Strava, open your profile, tap Share, then Copy link.');
+    return demoLinkStravaProfile(url);
   },
   async addActivityByLink(text, manual) {
     // Test mode has no server, so it can't open Strava links: the member types what Strava shows.

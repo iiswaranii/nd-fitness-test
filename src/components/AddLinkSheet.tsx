@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sheet } from './Sheet';
 import { Button, ErrorText } from './Form';
 import { Icon } from './Icon';
+import { StravaProfileLink } from './StravaProfileLink';
 import { useToast } from './Toast';
 import { data, parseStravaLink, type LinkPreview } from '../lib/data';
 import { useStore } from '../lib/store';
@@ -29,7 +30,8 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
   const [ss, setSs] = useState('');
   const [sport, setSport] = useState<Sport>('walk');
   const [date, setDate] = useState(today());
-  const athlete = profile?.strava_connected ? profile.strava_athlete_name : null;
+  const linked = !!profile?.strava_athlete_id;
+  const athlete = linked ? profile?.strava_athlete_name ?? 'your Strava profile' : null;
 
   const reset = () => { setUrl(''); setPreview(null); setKm(''); setHh(''); setMm(''); setSs(''); setErr(null); setDate(today()); setSport('walk'); };
   const close = () => { reset(); onClose(); };
@@ -88,6 +90,7 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
   return (
     <Sheet open={open} onClose={close} label="Add a Strava activity">
       <span className="sp lg" style={{ ['--c' as string]: 'var(--strava)' }}><Icon name="link" /></span>
+      {!linked ? <StravaProfileLink /> : <>
 
       {!preview ? (
         <>
@@ -109,7 +112,7 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
             <Button type="submit" variant="strava" loading={busy} disabled={!url.trim()}>{busy ? 'Reading activity…' : 'Continue'}</Button>
             <p className="legal">
               {athlete ? <>Activities by <span className="strong">{athlete}</span> on Strava count for you.</>
-                : <>Your first link connects your Strava name to your account. After that, only your own activities can be added.</>}
+                : null}
             </p>
             <button type="button" className="link-btn" style={{ alignSelf: 'center' }} onClick={() => setHelp((h) => !h)}>{help ? 'Hide help' : 'Link not working?'}</button>
             {help ? <LinkHelp /> : null}
@@ -199,6 +202,7 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
           <Button type="button" variant="ghost" onClick={() => { setPreview(null); setErr(null); }}>Back</Button>
         </form>
       )}
+      </>}
     </Sheet>
   );
 }

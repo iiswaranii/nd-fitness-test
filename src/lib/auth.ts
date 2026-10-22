@@ -22,6 +22,8 @@ export type Profile = {
   /** Set by the member's first Strava activity link: only that athlete's activities are accepted after. */
   strava_connected: boolean;
   strava_athlete_name: string | null;
+  /** Strava athlete id from the member's linked profile. Activities must be by this athlete. */
+  strava_athlete_id?: string | number | null;
   role: 'member' | 'admin';
   notify_new_challenges: boolean;
 };
@@ -243,6 +245,16 @@ export function demoLinkStrava(athleteName: string): void {
   acc.profile.strava_connected = true;
   acc.profile.strava_athlete_name = athleteName;
   save(db);
+}
+
+/** Test mode: link a Strava profile by its link (the id is read from the URL; short links get a stand-in id). */
+export function demoLinkStravaProfile(url: string): { athleteId: string; athleteName: string } {
+  const db = load();
+  const acc = db.session ? db.accounts[db.session] : null;
+  const id = url.match(/athletes\/(\d+)/)?.[1] ?? String(100000 + Math.floor(Math.random() * 900000));
+  const name = acc?.profile.full_name || 'Strava athlete';
+  if (acc) { acc.profile.strava_connected = true; acc.profile.strava_athlete_name = name; acc.profile.strava_athlete_id = id; save(db); }
+  return { athleteId: id, athleteName: name };
 }
 
 /** Test mode: every account on this phone, for the admin's member list. */

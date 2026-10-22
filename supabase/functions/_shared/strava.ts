@@ -190,6 +190,12 @@ export function parseEmbed(html: string, today: string): Parsed {
 
 /** strava.app.link / stra.va share links → the activity id they point to. */
 export async function resolveShortLink(url: string): Promise<string | null> {
+  return resolveLink(url, 'activities');
+}
+/** Follows a Strava share link and returns the activities/… or athletes/… id inside it. */
+export async function resolveLink(url: string, kind: 'activities' | 'athletes'): Promise<string | null> {
+  const direct = url.match(new RegExp(`strava\\.com/${kind}/(\\d{3,})`));
+  if (direct) return direct[1];
   const u = new URL(url);
   if (!['strava.app.link', 'stra.va'].includes(u.hostname)) return null;
   let next = url;
@@ -198,12 +204,20 @@ export async function resolveShortLink(url: string): Promise<string | null> {
     const loc = res.headers.get('location');
     const body = loc ? '' : await res.text();
     const hay = decodeURIComponent(loc ?? body);
-    const found = hay.match(/strava\.com\/activities\/(\d{6,})/) ?? hay.match(/strava:\/\/activities\/(\d{6,})/);
+    const found = hay.match(new RegExp(`strava\\.com/${kind}/(\\d{3,})`)) ?? hay.match(new RegExp(`strava://${kind}/(\\d{3,})`));
     if (found) return found[1];
     if (!loc) return null;
     next = new URL(loc, next).toString();
   }
   return null;
+}
+
+/** Public athlete page → the athlete's name ("Swaran Singh | Strava Athlete Profile"). */
+export function athleteNameFromPage(html: string): string | null {
+  const t = html.match(/<title[^>]*>([^<]*)<\/title>/i)?.[1];
+  if (!t) return null;
+  const n = decode(t).replace(/\s*\|\s*Strava.*$/i, '').trim();
+  return n && !/^strava/i.test(n) ? n : null;
 }
 
 export const BROWSER_UA = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1';

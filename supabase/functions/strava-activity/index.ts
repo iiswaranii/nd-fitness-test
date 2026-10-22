@@ -5,13 +5,13 @@
 //     the member reviews and can correct every field, then the app calls again with `manual` to save.
 //     A pasted Embed code (with token) uses Strava's own embed numbers instead.
 //  3. No GPS track (treadmill, indoor) → { needsStats }; the member types distance and time (`manual`).
-// The member's first link ties their account to that Strava athlete; later links must be by the same athlete,
-// and each activity can be added by only one member.
+// Ownership: each member first links their Strava *profile* (action 'link-profile' → athlete id). An activity
+// is accepted only when Strava says it was recorded by that same athlete id. Each activity once, each athlete
+// linked to one member.
 import { admin, cors, json, requireUser } from '../_shared/common.ts';
-import { BROWSER_UA, embedUrl, FLYBY_HEADERS, flybyMatchesUrl, flybyUrl, parseActivityPage, summaryFromFlyby, parseEmbed, parsePageFacts, resolveShortLink, sportOf, statsFromFlyby, type Sport } from '../_shared/strava.ts';
+import { athleteNameFromPage, BROWSER_UA, embedUrl, resolveLink, FLYBY_HEADERS, flybyMatchesUrl, flybyUrl, parseActivityPage, summaryFromFlyby, parseEmbed, parsePageFacts, resolveShortLink, sportOf, statsFromFlyby, type Sport } from '../_shared/strava.ts';
 
 const NOT_FOUND = 'We couldn’t open this activity. Check that the link is right and the activity isn’t set to “Only you” in Strava.';
-const norm = (s: string | null | undefined) => (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -19,13 +19,36 @@ Deno.serve(async (req) => {
     const user = await requireUser(req);
     if (!user) return json({ error: 'Please log in again.' }, 401);
     const body = await req.json().catch(() => ({}));
+    const db = admin();
+
+    // ---- link the member's Strava profile (Strava → You → Share → Copy link) ----
+    if (body.action === 'link-profile') {
+      const url = typeof body.url === 'string' ? body.url.trim() : '';
+      const m = url.match(/https?:\/\/[^\s"'<>]+/);
+      const aid = m ? await resolveLink(m[0], 'athletes').catch(() => null) : null;
+      if (!aid) return json({ error: 'That isn’t a Strava profile link. In Strava, open your profile, tap Share, then Copy link.' }, 400);
+      const { data: taken } = await db.from('profiles').select('id').eq('strava_athlete_id', aid).neq('id', user.id).maybeSingle();
+      if (taken) return json({ error: 'This Strava profile is already linked to another member. If it’s yours, ask the admin to help.' }, 409);
+      const pr = await fetch(`https://www.strava.com/athletes/${aid}`, { headers: { 'User-Agent': BROWSER_UA, 'Accept-Language': 'en-GB,en;q=0.9' } }).catch(() => null);
+      if (pr && pr.status === 404) return json({ error: 'We couldn’t find that Strava profile. Check the link and try again.' }, 404);
+      const name = pr?.ok ? athleteNameFromPage(await pr.text()) : null;
+      const { error } = await db.from('profiles').update({
+        strava_athlete_id: aid, strava_athlete_name: name ?? 'Strava athlete', strava_connected: true, strava_connected_at: new Date().toISOString(),
+      }).eq('id', user.id);
+      if (error) throw error;
+      return json({ linked: true, athleteId: aid, athleteName: name });
+    }
+
+    const { data: me } = await db.from('profiles').select('strava_athlete_id, strava_athlete_name, strava_connected').eq('id', user.id).single();
+    const myAid = me?.strava_athlete_id ? String(me.strava_athlete_id) : null;
+    if (!myAid) return json({ needsProfile: true, error: 'First link your Strava profile, so we know which activities are yours.' }, 428);
+    const notMine = (by: string | null) => json({ error: `This activity was recorded by ${by ?? 'someone else'} on Strava, not by your linked Strava profile${me?.strava_athlete_name ? ` (${me.strava_athlete_name})` : ''}. You can only add your own activities.` }, 403);
     const today = typeof body.today === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.today) ? body.today : new Date().toISOString().slice(0, 10);
     const token = typeof body.token === 'string' && /^[\w-]{4,80}$/.test(body.token) ? body.token : null;
     let id: string | null = typeof body.id === 'string' && /^\d{6,20}$/.test(body.id) ? body.id : null;
     if (!id && typeof body.shortUrl === 'string') id = await resolveShortLink(body.shortUrl).catch(() => null);
     if (!id) return json({ error: 'We couldn’t find an activity in that link. In Strava, open the activity, tap Share, then Copy link.' }, 400);
 
-    const db = admin();
     const { data: dup } = await db.from('activities').select('user_id').eq('id', id).maybeSingle();
     if (dup) return json({ error: dup.user_id === user.id ? 'You’ve already added this activity.' : 'This activity was already added by another member.' }, 409);
 
@@ -80,6 +103,7 @@ Deno.serve(async (req) => {
         // ---- 2c. Strava's own summary via Strava Labs Flyby (distance, elapsed time, athlete id) ----
         // Nothing is saved yet: the member checks (and can correct) the numbers first.
         const sum = await summary();
+        if (sum?.athleteId && sum.athleteId !== myAid) return notMine(athleteName);
         if (sum) {
           if (sum.activityType && !sportType) { sportType = sum.activityType; sport = sportOf(sportType); }
           return json({ needsStats: true, preview: {
@@ -118,27 +142,15 @@ Deno.serve(async (req) => {
     if (!date) date = today;
 
     if (!sport) return json({ error: `This is a ${sportType ?? 'different'} activity. Only walks, hikes, runs and rides count.` }, 400);
-    if (!athleteId && !athleteName) return json({ error: 'We couldn’t tell whose activity this is. Please try again.' }, 422);
 
-    // ---- ownership: first link ties the member to a Strava athlete ----
-    const { data: me } = await db.from('profiles').select('strava_athlete_id, strava_athlete_name, strava_connected').eq('id', user.id).single();
-    let firstLink = false;
-    if (!me?.strava_connected) {
-      if (athleteId) {
-        const { data: taken } = await db.from('profiles').select('id').eq('strava_athlete_id', athleteId).neq('id', user.id).maybeSingle();
-        if (taken) return json({ error: `This activity is by ${athleteName ?? 'another athlete'}, whose Strava is already linked to another member. You can only add your own.` }, 403);
-      }
-      const { error } = await db.from('profiles').update({
-        strava_athlete_id: athleteId, strava_athlete_name: athleteName ?? 'Strava athlete', strava_connected: true, strava_connected_at: new Date().toISOString(),
-      }).eq('id', user.id);
-      if (error) throw error;
-      firstLink = true;
-    } else {
-      const sameId = athleteId && me.strava_athlete_id ? String(me.strava_athlete_id) === athleteId : null;
-      const same = sameId ?? (norm(athleteName) === norm(me.strava_athlete_name));
-      if (!same) return json({ error: `This activity is by ${athleteName ?? 'another athlete'}. Your account is linked to ${me.strava_athlete_name ?? 'a different Strava athlete'}, so only their activities can be added.` }, 403);
-      if (athleteId && !me.strava_athlete_id) await db.from('profiles').update({ strava_athlete_id: athleteId }).eq('id', user.id);
-    }
+    // ---- ownership: Strava's athlete id for this activity must be the member's linked profile ----
+    if (!athleteId) athleteId = (await (async () => {
+      const mr = await fetch(flybyMatchesUrl(id!), { headers: { 'User-Agent': BROWSER_UA, ...FLYBY_HEADERS } }).catch(() => null);
+      return mr?.ok ? summaryFromFlyby(await mr.json().catch(() => null), id!) : null;
+    })())?.athleteId ?? null;
+    if (!athleteId) return json({ error: 'We couldn’t confirm on Strava who recorded this activity. Please try again in a little while.' }, 503);
+    if (athleteId !== myAid) return notMine(athleteName);
+    const firstLink = false;
 
     const row = {
       id,
