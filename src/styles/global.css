@@ -614,3 +614,25 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 
 /* "Add a Strava screenshot" */
 @keyframes spin { to { transform: rotate(360deg); } }
+
+.flag { display: inline-block; margin-left: 5px; font-size: 0.92em; line-height: 1; vertical-align: 0.02em; font-weight: 400; }
+
+/* ---------- leaderboard podium ---------- */
+.podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; align-items: end; gap: 8px; padding: 8px 4px 0; }
+.pod { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; text-align: center; }
+.pod .pn { font-weight: 700; font-size: 13.5px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pod .pv { font-size: 12.5px; color: var(--ink-2); font-weight: 600; }
+.pod .step { width: 100%; border-radius: 12px 12px 4px 4px; display: grid; place-items: center; margin-top: 4px;
+  background: color-mix(in srgb, var(--c) 16%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c) 28%, transparent); }
+.pod .step b { font-family: var(--font-d); font-size: 20px; color: var(--c); }
+.pod.p1 .step { height: 74px; } .pod.p2 .step { height: 54px; } .pod.p3 .step { height: 40px; }
+.trophy { flex: none; filter: drop-shadow(0 3px 4px rgb(0 0 0 / .18)); }
+
+/* ---------- trophy rack (profile) ---------- */
+.rack { display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 0; }
+.rack .slot { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; padding: 10px 4px 0; min-height: 104px; background: none; border: 0; color: inherit; font: inherit; }
+.rack .slot .tn { font-size: 11.5px; font-weight: 600; color: var(--ink-2); line-height: 1.25; max-width: 100%; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 2.5em; }
+.rack .slot .tm { font-size: 11px; color: var(--ink-3, var(--ink-2)); white-space: nowrap; }
+.rack .slot.empty .trophy { opacity: .16; filter: grayscale(1); }
+.rack .shelf { grid-column: 1 / -1; height: 12px; border-radius: 3px; margin: 2px 0 10px;
+  background: linear-gradient(#B07A4A, #7D522E); box-shadow: 0 6px 10px -6px rgb(0 0 0 / .45), inset 0 1px 0 rgb(255 255 255 / .25); }

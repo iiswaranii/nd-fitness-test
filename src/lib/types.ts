@@ -66,6 +66,7 @@ export type Participant = {
   user_id: string;
   name: string;
   city: string | null;
+  country: string | null;
   strava_connected: boolean;
   joined_at: string;
   activities: Activity[];

@@ -21,6 +21,11 @@ type Store = {
 
 const Ctx = createContext<Store | null>(null);
 const NEW_FOR_DAYS = 14;
+/** Opening the app counts as reading its notifications: clear the number on the app icon. */
+function clearIconBadge() {
+  try { (navigator as Navigator & { clearAppBadge?: () => Promise<void> }).clearAppBadge?.().catch(() => {}); } catch { /* not supported */ }
+}
+
 const seenKey = (uid: string) => `ndf-seen-${uid}`;
 function readSeen(uid: string): string[] {
   try { return JSON.parse(localStorage.getItem(seenKey(uid)) || '[]'); } catch { return []; }
@@ -65,7 +70,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
   // Coming back to the app refreshes challenges and activities (e.g. after adding a link on another phone).
   useEffect(() => {
-    const onVis = () => { if (document.visibilityState === 'visible') reload(); };
+    const onVis = () => { if (document.visibilityState === 'visible') { reload(); clearIconBadge(); } };
+    clearIconBadge();
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
   }, [reload]);

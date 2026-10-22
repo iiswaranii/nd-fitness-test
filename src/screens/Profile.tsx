@@ -15,6 +15,7 @@ import { useSession } from '../lib/session';
 import { validateName } from '../lib/validation';
 import { data } from '../lib/data';
 import { Badges } from '../components/Badges';
+import { TrophyRack } from '../components/TrophyRack';
 import { NotificationSettings } from '../components/NotificationSettings';
 import { BodyFields, DobField, LocationFields, MobileField, mobileFrom, mobileValue, validateBody, validateDob, validateLoc, validateMobile, type Body, type Loc, type Mobile } from '../components/DetailsFields';
 import { useStore } from '../lib/store';
@@ -85,6 +86,7 @@ export default function Profile() {
           </button>
         </section>
 
+        <TrophyRack />
         <Badges />
 
         <NotificationSettings />

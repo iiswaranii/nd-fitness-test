@@ -9,6 +9,8 @@ import { fmtAmount, habitByKey } from '../lib/habits';
 import { lookOf } from '../lib/look';
 import { status } from '../lib/progress';
 import type { Challenge, Participant } from '../lib/types';
+import { Flag } from './Flag';
+import { Trophy, type Tier } from './Trophy';
 
 /**
  * The community part of a challenge.
@@ -36,7 +38,7 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
   const wow = weekOverWeek(c, me);
   const h = habitByKey(c.habit_key);
   const unit = c.category === 'activity' ? 'km' : h?.unit ?? '';
-  const fmt = (v: number) => (c.category === 'activity' ? `${v.toFixed(1)} km` : fmtAmount(Math.round(v), unit));
+  const fmt = (v: number) => (c.category === 'activity' ? `${v.toFixed(2)} km` : fmtAmount(Math.round(v), unit));
   const finished = status(c) === 'finished';
 
   if (!hasBoard(c)) {
@@ -63,8 +65,11 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
   }
 
   const myIndex = rows.findIndex((r) => r.me);
-  const shown: (BoardRow & { rank: number })[] = rows.map((r, i) => ({ ...r, rank: i + 1 }))
-    .filter((r, i) => all || i < 8 || r.me);
+  // Podium for the top three who have actually scored; the list continues from 4th.
+  const ranked = rows.map((r, i) => ({ ...r, rank: i + 1 }));
+  const podium = ranked.filter((r) => r.rank <= 3 && r.value > 0);
+  const rest = podium.length ? ranked.filter((r) => r.rank > podium.length) : ranked;
+  const shown: (BoardRow & { rank: number })[] = rest.filter((r, i) => all || i < 8 || r.me);
   const top = Math.max(1, rows[0]?.value ?? 1);
 
   return (
@@ -88,21 +93,42 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
           <span className="rv">{fmt(wow.now)}</span>
         </div>
       ) : null}
-      <div className="list">
+      {podium.length ? <Podium rows={podium} finished={finished} /> : null}
+      {shown.length ? <div className="list">
         {shown.map((r) => (
           <div key={r.user_id} className={`board-row ${r.me ? 'me' : ''}`}>
             <span className="rk">{r.rank}</span>
             <Avatar name={r.name} size={36} />
             <div className="grow" style={{ minWidth: 0 }}>
-              <span className="strong nm">{r.name}{r.me ? <span className="you">You</span> : null}</span>
+              <span className="strong nm">{r.name}<Flag country={r.country} />{r.me ? <span className="you">You</span> : null}</span>
               <Bar pct={(r.value / top) * 100} color={look.color} small />
             </div>
             <span className="rv">{r.label}</span>
           </div>
         ))}
-      </div>
-      {rows.length > 8 ? <button className="link-btn" onClick={() => setAll((a) => !a)}>{all ? 'Show less' : `Show all ${rows.length}`}</button> : null}
+      </div> : null}
+      {rest.length > 8 ? <button className="link-btn" onClick={() => setAll((a) => !a)}>{all ? 'Show less' : `Show all ${rows.length}`}</button> : null}
       <p className="legal">Everyone here is moving forward. Cheer each other on!</p>
     </section>
+  );
+}
+
+/** Top three on steps: 2nd · 1st · 3rd, each with a trophy. */
+function Podium({ rows, finished }: { rows: (BoardRow & { rank: number })[]; finished: boolean }) {
+  const order = [rows[1], rows[0], rows[2]].filter(Boolean) as (BoardRow & { rank: number })[];
+  const tier = (r: number): Tier => (r === 1 ? 'gold' : r === 2 ? 'silver' : 'bronze');
+  return (
+    <div className="podium" aria-label={finished ? 'Final podium' : 'Current top three'}>
+      {order.map((r) => (
+        <div key={r.user_id} className={`pod p${r.rank} ${r.me ? 'me' : ''}`}>
+          <Trophy tier={tier(r.rank)} size={r.rank === 1 ? 52 : 42} />
+          <Avatar name={r.name} size={r.rank === 1 ? 46 : 38} />
+          <span className="pn">{r.name.split(' ')[0]}<Flag country={r.country} /></span>
+          <span className="pv">{r.label}</span>
+          {r.me ? <span className="you" style={{ marginLeft: 0 }}>You</span> : null}
+          <div className="step"><b>{r.rank}</b></div>
+        </div>
+      ))}
+    </div>
   );
 }

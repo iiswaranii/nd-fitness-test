@@ -32,4 +32,7 @@ export function ago(iso: string | null) {
 /** 42m 34s · 1h 05m 20s */
 export const fmtHms = (s: number) => { const t = Math.round(s), h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), x = t % 60; return h ? `${h}h ${pad(m)}m ${pad(x)}s` : `${m}m ${pad(x)}s`; };
 export const fmtDur = (s: number) => { const h = Math.floor(s / 3600), m = Math.round((s % 3600) / 60); return h ? `${h}h ${pad(m)}m` : `${m} min`; };
-export const fmtKm = (v: number) => (v >= 100 ? v.toFixed(0) : v.toFixed(1));
+/** Two decimals, like Strava (2.33). Totals keep every decimal; this is display only. */
+export const fmtKm = (v: number) => (v >= 1000 ? v.toFixed(0) : v.toFixed(2));
+/** Distance exactly as stored, trailing zeros trimmed (1.20082). */
+export const fmtKmExact = (v: number) => String(+v.toFixed(5));

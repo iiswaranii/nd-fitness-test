@@ -7,7 +7,7 @@ import { data, parseStravaLink, type LinkPreview } from '../lib/data';
 import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
 import { friendlyError } from '../lib/errors';
-import { addDays, fmtDay, fmtKm, today } from '../lib/dates';
+import { addDays, fmtDay, fmtHms, fmtKm, fmtKmExact, today } from '../lib/dates';
 import { SPORTS, type Challenge, type Sport } from '../lib/types';
 
 /**
@@ -63,6 +63,13 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
     finally { setBusy(false); }
   };
 
+  const confirmOfficial = async () => {
+    setBusy(true); setErr(null);
+    try { await done(await data.addActivityByLink(url, undefined, true)); }
+    catch (e) { setErr(friendlyError(e)); }
+    finally { setBusy(false); }
+  };
+
   const submitStats = async () => {
     const k = parseFloat(km.replace(',', '.'));
     const secs = (parseInt(hh || '0', 10) || 0) * 3600 + (parseInt(mm || '0', 10) || 0) * 60 + (parseInt(ss || '0', 10) || 0);
@@ -108,6 +115,26 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
             {help ? <LinkHelp /> : null}
           </form>
         </>
+      ) : preview.official ? (
+        <div className="stack">
+          <div className="stack tight">
+            <h2 className="h1" style={{ fontSize: 24 }}>{preview.title ?? 'Your activity'}</h2>
+            {preview.athleteName ? <p className="lead">{preview.athleteName} on Strava</p> : null}
+          </div>
+          <div className="kv">
+            <div><div className="k">Type</div><div className="v">{preview.sportType ?? (preview.sport ? SPORTS[preview.sport].verb : '—')}</div></div>
+            <div><div className="k">Date</div><div className="v">{preview.date ? fmtDay(preview.date) : '—'}{preview.time ? ` · ${preview.time.slice(0, 5)}` : ''}</div></div>
+            <div><div className="k">Distance</div><div className="v">{fmtKmExact(preview.km ?? 0)} km</div></div>
+            <div><div className="k">Time</div><div className="v">{fmtHms(preview.seconds ?? 0)}</div></div>
+          </div>
+          {forChallenge?.sport && preview.sport && preview.sport !== forChallenge.sport ? (
+            <p className="notice">This is a {SPORTS[preview.sport].verb.toLowerCase()}, so it won’t count toward {forChallenge.title}. It still counts for any {SPORTS[preview.sport].verb.toLowerCase()} challenge you’ve joined.</p>
+          ) : null}
+          <p className="small muted">Exactly as recorded in Strava. To change anything, edit the activity in Strava first, then paste the link again.</p>
+          <ErrorText>{err}</ErrorText>
+          <Button variant="strava" loading={busy} onClick={confirmOfficial}>Submit</Button>
+          <Button type="button" variant="ghost" onClick={() => { setPreview(null); setErr(null); }}>Back</Button>
+        </div>
       ) : (
         <form className="stack" onSubmit={(e) => { e.preventDefault(); submitStats(); }}>
           <div className="stack tight">
@@ -117,8 +144,6 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
             ) : null}
             {preview.partial ? (
               <p className="notice">Part of this route is hidden by a Strava privacy zone, so the distance below is too short. Please correct it to match Strava.</p>
-            ) : preview.official ? (
-              <p className="small muted">These are the numbers Strava has for this activity. Check them and fix anything that’s off, then save.</p>
             ) : preview.measured ? (
               <p className="small muted">We measured this from the activity’s route. Check it matches Strava and fix anything that’s off, then save.</p>
             ) : (

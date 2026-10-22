@@ -27,7 +27,8 @@ export interface DataApi {
    * Reads a Strava activity from a pasted link and saves it. When Strava doesn't show the numbers publicly,
    * returns { needsStats } with what it could read; call again with `manual` (distance and time from Strava).
    */
-  addActivityByLink(text: string, manual?: ManualStats): Promise<LinkResult>;
+  /** confirm=true saves Strava's own numbers (the server reads them again; the app sends none). */
+  addActivityByLink(text: string, manual?: ManualStats, confirm?: boolean): Promise<LinkResult>;
   removeActivity(id: string): Promise<void>;
   participants(challengeId: string): Promise<Participant[]>;
   /** Members of a challenge with the data needed to rank them. Members of the challenge and admins only. */
@@ -178,10 +179,10 @@ const supabaseData: DataApi = {
     const { error } = await sb().from('habit_logs').upsert({ user_id: me, challenge_id: challengeId, day: date, value, entries });
     if (error) throw error;
   },
-  async addActivityByLink(text, manual) {
+  async addActivityByLink(text, manual, confirm) {
     const p = parseStravaLink(text);
     if (!p) throw new Error('That doesn’t look like a Strava activity link.');
-    const { data, error } = await sb().functions.invoke('strava-activity', { body: { ...p, today: today(), manual } });
+    const { data, error } = await sb().functions.invoke('strava-activity', { body: { ...p, today: today(), manual, confirm: confirm === true } });
     if (error) throw await fnError(error);
     if (data.needsStats) return { needsStats: true, preview: data.preview as LinkPreview };
     return { activity: toAct(data.activity as ActRow), athleteName: String(data.athleteName ?? ''), firstLink: !!data.firstLink };
@@ -193,7 +194,7 @@ const supabaseData: DataApi = {
   async participants(challengeId) {
     const { data: members, error } = await sb()
       .from('challenge_members')
-      .select('user_id, joined_at, profiles(full_name, city, strava_connected)')
+      .select('user_id, joined_at, profiles(full_name, city, country, strava_connected)')
       .eq('challenge_id', challengeId);
     if (error) throw error;
     const ids = (members ?? []).map((m) => m.user_id);
@@ -203,11 +204,12 @@ const supabaseData: DataApi = {
       sb().from('habit_logs').select('user_id, challenge_id, day, value, entries').eq('challenge_id', challengeId),
     ]);
     return (members ?? []).map((m) => {
-      const p = (Array.isArray(m.profiles) ? m.profiles[0] : m.profiles) as { full_name: string | null; city: string | null; strava_connected: boolean } | null;
+      const p = (Array.isArray(m.profiles) ? m.profiles[0] : m.profiles) as { full_name: string | null; city: string | null; country: string | null; strava_connected: boolean } | null;
       return {
         user_id: m.user_id,
         name: p?.full_name || 'Member',
         city: p?.city ?? null,
+        country: p?.country ?? null,
         strava_connected: !!p?.strava_connected,
         joined_at: m.joined_at,
         activities: ((acts ?? []) as (ActRow & { user_id: string })[]).filter((a) => a.user_id === m.user_id).map(toAct),
@@ -218,8 +220,8 @@ const supabaseData: DataApi = {
   async board(challengeId) {
     const { data, error } = await sb().rpc('challenge_board', { cid: challengeId });
     if (error) throw error;
-    return (data ?? []).map((r: { user_id: string; name: string; city: string | null; activities: Activity[]; logs: HabitLog[] }) => ({
-      user_id: r.user_id, name: r.name, city: r.city, strava_connected: true, joined_at: '',
+    return (data ?? []).map((r: { user_id: string; name: string; city: string | null; country: string | null; activities: Activity[]; logs: HabitLog[] }) => ({
+      user_id: r.user_id, name: r.name, city: r.city, country: r.country ?? null, strava_connected: true, joined_at: '',
       activities: (r.activities ?? []).map((a) => ({ ...a, km: Number(a.km) })),
       logs: (r.logs ?? []).map((l) => ({ ...l, value: Number(l.value) })),
     }));
@@ -377,7 +379,7 @@ const demoData: DataApi = {
     await wait(250);
     const s = load(), m = await me();
     return (s.members[cid] ?? []).map((x) => ({
-      user_id: x.user_id, name: x.user_id === m.id ? m.name : x.name, city: x.user_id === m.id ? m.city : x.city,
+      user_id: x.user_id, name: x.user_id === m.id ? m.name : x.name, city: x.user_id === m.id ? m.city : x.city, country: x.user_id === m.id ? m.country : (x as { country?: string }).country ?? 'India',
       strava_connected: x.user_id === m.id ? m.strava : true, joined_at: x.joined_at,
       activities: s.activities[x.user_id] ?? [],
       logs: (s.logs[x.user_id] ?? []).filter((l) => l.challenge_id === cid),
@@ -386,7 +388,8 @@ const demoData: DataApi = {
   async board(cid) {
     const s = load(), m = await me();
     const mine = (s.members[cid] ?? []).some((x) => x.user_id === m.id);
-    if (!mine && !(await isDemoAdmin())) throw new Error('Join this challenge to see its leaderboard.');
+    const c = s.challenges.find((x) => x.id === cid);
+    if (!mine && !(await isDemoAdmin()) && !(c && c.start_date <= today())) throw new Error('This leaderboard opens when the challenge starts');
     return this.participants(cid);
   },
   async testInbox() { return []; },

@@ -313,7 +313,7 @@ export function summaryFromFlyby(body: unknown, id: string): FlybySummary | null
     athleteId: a.athleteId != null ? String(a.athleteId) : null,
     startUtc: num(a.startTime),
     elapsedS: num(a.elapsedTime),
-    distanceM: Math.round(dist),
+    distanceM: dist, // exactly as Strava stores it (metres, with decimals)
     name: typeof a.name === 'string' ? a.name : null,
     activityType: typeof a.activityType === 'string' ? a.activityType : null,
   };

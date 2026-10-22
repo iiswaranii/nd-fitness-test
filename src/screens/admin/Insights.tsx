@@ -14,6 +14,7 @@ import { saveCsv, saveXlsx } from '../../lib/exporter';
 import { goalText, status } from '../../lib/progress';
 import type { MemberStat } from '../../lib/types';
 import { AGE_BANDS, audienceText } from '../../lib/audience';
+import { Flag } from '../../components/Flag';
 
 type Act = 'Active' | 'Quiet' | 'Inactive';
 /** Active: did something in the last 7 days. Quiet: 8–30 days ago. Inactive: over 30 days, or never. */
@@ -169,7 +170,7 @@ export default function Insights() {
             {list.slice(0, 60).map(({ m, a }) => (
               <div key={m.user_id} className="list-row">
                 <div className="grow">
-                  <p className="strong" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}</p>
+                  <p className="strong" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.name}<Flag country={m.country} /></p>
                   <p className="small muted" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{[m.city, m.state, m.country !== 'India' ? m.country : null].filter(Boolean).join(', ')} · {m.live_challenges} live {m.live_challenges === 1 ? 'challenge' : 'challenges'}</p>
                 </div>
                 <div style={{ textAlign: 'right', flex: 'none' }}>

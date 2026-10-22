@@ -64,16 +64,27 @@ Deno.serve(async (req) => {
       if (!sport) return json({ error: `This is a ${sportType} activity. Only walks, hikes, runs and rides count.` }, 400);
 
       const m = body.manual;
-      if (!m) {
+      const summary = async () => {
+        const mr = await fetch(flybyMatchesUrl(id!), { headers: { 'User-Agent': BROWSER_UA, ...FLYBY_HEADERS } }).catch(() => null);
+        return mr?.ok ? summaryFromFlyby(await mr.json().catch(() => null), id!) : null;
+      };
+      if (body.confirm === true) {
+        // ---- 3. save Strava's own numbers, exactly (fetched again here, never taken from the app) ----
+        const sum = await summary();
+        if (!sum) return json({ error: 'We couldn’t read this activity from Strava just now. Please try again.' }, 502);
+        distanceM = sum.distanceM; seconds = sum.elapsedS ?? 0; elapsed = sum.elapsedS;
+        athleteId = sum.athleteId ?? athleteId;
+        if (sum.startUtc) startUtc = new Date(sum.startUtc * 1000).toISOString().replace('.000Z', 'Z');
+        if (!(seconds > 0)) return json({ error: 'Strava didn’t share this activity’s time. Please try again.' }, 502);
+      } else if (!m) {
         // ---- 2c. Strava's own summary via Strava Labs Flyby (distance, elapsed time, athlete id) ----
         // Nothing is saved yet: the member checks (and can correct) the numbers first.
-        const mr = await fetch(flybyMatchesUrl(id), { headers: { 'User-Agent': BROWSER_UA, ...FLYBY_HEADERS } }).catch(() => null);
-        const sum = mr?.ok ? summaryFromFlyby(await mr.json().catch(() => null), id) : null;
+        const sum = await summary();
         if (sum) {
           if (sum.activityType && !sportType) { sportType = sum.activityType; sport = sportOf(sportType); }
           return json({ needsStats: true, preview: {
             id, title: title ?? sum.name, sportType, sport, date, time, athleteName,
-            km: Math.round(sum.distanceM / 10) / 100, seconds: sum.elapsedS, measured: true, partial: false, official: true,
+            km: sum.distanceM / 1000, seconds: sum.elapsedS, measured: true, partial: false, official: true,
           } });
         }
         // ---- 2d. fallback: measure the public GPS track (misses parts hidden by a privacy zone) ----
@@ -87,23 +98,22 @@ Deno.serve(async (req) => {
         }
         return json({ needsStats: true, preview: {
           id, title, sportType, sport, date, time, athleteName,
-          km: ok ? Math.round(st!.distanceM / 10) / 100 : null,
+          km: ok ? st!.distanceM / 1000 : null,
           seconds: ok ? (st!.movingS || st!.elapsedS) : null,
           measured: ok, partial,
         } });
+      } else {
+        // ---- 3b. no Strava numbers available (no GPS, or Strava Labs down): the member typed them ----
+        if (!athleteId) athleteId = (await summary())?.athleteId ?? null;
+        const km = Number(m.km), secs = Number(m.seconds);
+        const ms = typeof m.sport === 'string' && ['walk', 'run', 'ride'].includes(m.sport) ? m.sport as Sport : null;
+        if (ms) sport = ms;
+        if (!(km >= 0.1 && km <= (sport === 'ride' ? 400 : 120))) return json({ error: 'Enter the distance in km, as shown in Strava.' }, 400);
+        if (!(secs >= 60 && secs <= 24 * 3600)) return json({ error: 'Enter the time, as shown in Strava.' }, 400);
+        if (typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) && m.date <= today) { if (m.date !== date) time = null; date = m.date; }
+        distanceM = km * 1000; seconds = Math.round(secs);
+        source = 'manual';
       }
-      if (!athleteId) {
-        const mr = await fetch(flybyMatchesUrl(id), { headers: { 'User-Agent': BROWSER_UA, ...FLYBY_HEADERS } }).catch(() => null);
-        athleteId = (mr?.ok ? summaryFromFlyby(await mr.json().catch(() => null), id) : null)?.athleteId ?? null;
-      }
-      const km = Number(m.km), secs = Number(m.seconds);
-      const ms = typeof m.sport === 'string' && ['walk', 'run', 'ride'].includes(m.sport) ? m.sport as Sport : null;
-      if (ms) sport = ms;
-      if (!(km >= 0.1 && km <= (sport === 'ride' ? 400 : 120))) return json({ error: 'Enter the distance in km, as shown in Strava.' }, 400);
-      if (!(secs >= 60 && secs <= 24 * 3600)) return json({ error: 'Enter the time, as shown in Strava.' }, 400);
-      if (typeof m.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(m.date) && m.date <= today) { if (m.date !== date) time = null; date = m.date; }
-      distanceM = Math.round(km * 1000); seconds = Math.round(secs);
-      source = m.edited ? 'manual' : 'link';
     }
     if (!date) date = today;
 

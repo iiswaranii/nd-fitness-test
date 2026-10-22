@@ -9,7 +9,7 @@ export function hasBoard(c: Challenge): boolean {
   return !!habitByKey(c.habit_key)?.board;
 }
 
-export type BoardRow = { user_id: string; name: string; city: string | null; value: number; label: string; me: boolean; loggedToday: boolean; days: number };
+export type BoardRow = { user_id: string; name: string; city: string | null; country: string | null; value: number; label: string; me: boolean; loggedToday: boolean; days: number };
 
 export function rankBoard(c: Challenge, ps: Participant[], meId: string | null): BoardRow[] {
   const h = habitByKey(c.habit_key);
@@ -18,7 +18,7 @@ export function rankBoard(c: Challenge, ps: Participant[], meId: string | null):
     const pr = progress({ ...c, joined: true }, p.activities, p.logs);
     let value = pr.value, label = '';
     if (c.category === 'activity') {
-      label = c.metric === 'distance' ? `${value.toFixed(1)} km` : c.metric === 'days' ? `${value} days` : `${value} ${c.sport === 'ride' ? 'rides' : c.sport === 'run' ? 'runs' : 'walks'}`;
+      label = c.metric === 'distance' ? `${value.toFixed(2)} km` : c.metric === 'days' ? `${value} days` : `${value} ${c.sport === 'ride' ? 'rides' : c.sport === 'run' ? 'runs' : 'walks'}`;
     } else {
       const end = c.end_date < t ? c.end_date : t;
       value = p.logs.filter((l) => l.challenge_id === c.id && l.date >= c.start_date && l.date <= end).reduce((s, l) => s + l.value, 0);
@@ -27,7 +27,7 @@ export function rankBoard(c: Challenge, ps: Participant[], meId: string | null):
     const loggedToday = c.category === 'habit'
       ? p.logs.some((l) => l.challenge_id === c.id && l.date === t)
       : p.activities.some((a) => a.sport === c.sport && a.date === t);
-    return { user_id: p.user_id, name: p.name, city: p.city, value, label, me: p.user_id === meId, loggedToday, days: pr.metDays.length };
+    return { user_id: p.user_id, name: p.name, city: p.city, country: p.country, value, label, me: p.user_id === meId, loggedToday, days: pr.metDays.length };
   }).sort((a, b) => b.value - a.value || a.name.localeCompare(b.name));
 }
 
@@ -40,7 +40,7 @@ export function nudge(c: Challenge, rows: BoardRow[]): string {
   if (me.value === 0) return 'Your first entry is the hardest one. Log today and you’re on the board!';
   if (i === 0) return 'You’re setting the pace for everyone. Keep that rhythm going!';
   const gap = rows[i - 1].value - me.value;
-  if (c.category === 'activity' && c.metric === 'distance') return `Just ${gap.toFixed(1)} ${unit} more and you move up a spot. One more walk could do it!`;
+  if (c.category === 'activity' && c.metric === 'distance') return `Just ${gap.toFixed(2)} ${unit} more and you move up a spot. One more walk could do it!`;
   if (c.category === 'activity') return `${Math.ceil(gap)} more to move up. You’re closer than you think!`;
   const h = habitByKey(c.habit_key);
   return `${fmtAmount(Math.ceil(gap), h?.unit)} more to move up a spot. You’ve got this!`;

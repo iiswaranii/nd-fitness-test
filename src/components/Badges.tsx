@@ -16,18 +16,15 @@ function Medal({ b, size = 64 }: { b: Badge; size?: number }) {
   );
 }
 
-/** Profile badges: podium places, milestones, streaks and taking part. Earned first; locked ones show how to earn them. */
-export function Badges() {
-  const { challenges, activities, logs } = useStore();
+/** Finishing places from finished leaderboard challenges the member took part in. */
+export function usePlacings(): Placings {
+  const { challenges } = useStore();
   const { user } = useSession();
   const [placings, setPlacings] = useState<Placings>({});
-  const [open, setOpen] = useState<Badge | null>(null);
-  const [all, setAll] = useState(false);
-
-  // Finishing places come from finished leaderboard challenges the member took part in.
   useEffect(() => {
     const done = challenges.filter((c) => c.joined && status(c) === 'finished' && hasBoard(c));
     if (!done.length || !user) return;
+    let alive = true;
     Promise.all(done.map((c) => data.board(c.id).then((ps) => [c, ps] as const).catch(() => null))).then((rs) => {
       const p: Placings = {};
       for (const r of rs) {
@@ -36,9 +33,20 @@ export function Badges() {
         const i = rows.findIndex((x) => x.me);
         if (i >= 0 && rows[i].value > 0) p[r[0].id] = { rank: i + 1, of: rows.length };
       }
-      setPlacings(p);
+      if (alive) setPlacings(p);
     });
+    return () => { alive = false; };
   }, [challenges, user]);
+  return placings;
+}
+
+/** Profile badges: podium places, milestones, streaks and taking part. Earned first; locked ones show how to earn them. */
+export function Badges() {
+  const { challenges, activities, logs } = useStore();
+  const [open, setOpen] = useState<Badge | null>(null);
+  const [all, setAll] = useState(false);
+
+  const placings = usePlacings();
 
   const badges = useMemo(() => computeBadges(challenges, activities, logs, placings), [challenges, activities, logs, placings]);
   const earned = badges.filter((b) => b.earned);

@@ -17,6 +17,7 @@ import { habitByKey, habitGoalText } from '../../lib/habits';
 import { saveCsv, saveXlsx } from '../../lib/exporter';
 import { audienceText, hasAudience } from '../../lib/audience';
 import type { Challenge, Participant } from '../../lib/types';
+import { Flag } from '../../components/Flag';
 
 type Row = { p: Participant; value: number; pct: number; done: boolean; onTrack: boolean; counted: number; km: number };
 
@@ -95,7 +96,7 @@ export default function AdminChallenge() {
                   {rows.map((r, i) => (
                     <tr key={r.p.user_id}>
                       <td className="n">{i + 1}</td>
-                      <td><span className="strong">{r.p.name}</span>{r.p.city ? <span className="muted"> · {r.p.city}</span> : null}</td>
+                      <td><span className="strong">{r.p.name}</span><Flag country={r.p.country} />{r.p.city ? <span className="muted"> · {r.p.city}</span> : null}</td>
                       <td className="n">{fmtValue(c, r.value)} / {c.target} {unitOf(c)}</td>
                       <td className="n">{Math.floor(r.pct)}%</td>
                       <td>

@@ -19,7 +19,7 @@ import { data } from '../lib/data';
 import { lookOf } from '../lib/look';
 import { audienceText, hasAudience } from '../lib/audience';
 import { canJoin, challengeDays, dayText, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
-import { addDays, fmtDay, fmtKm, fmtDur, fmtRange, longDay, parse, relDay, today } from '../lib/dates';
+import { addDays, fmtDay, fmtKm, fmtHms, fmtRange, longDay, parse, relDay, today } from '../lib/dates';
 import { dayMet, habitByKey, habitGoalText } from '../lib/habits';
 import { friendlyError } from '../lib/errors';
 
@@ -174,7 +174,7 @@ export default function ChallengeDetail() {
               {p.counted.slice(0, 8).map((a) => (
                 <div key={a.id} className="list-row">
                   <span className="sp"><Icon name={a.sport} /></span>
-                  <span className="grow"><span className="strong" style={{ display: 'block' }}>{a.name}</span><span className="small muted">{relDay(a.date)} · {fmtDur(a.moving_s)}</span></span>
+                  <span className="grow"><span className="strong" style={{ display: 'block' }}>{a.name}</span><span className="small muted">{relDay(a.date)} · {fmtHms(a.moving_s)}</span></span>
                   <span className="rv">{fmtKm(a.km)}<small>km</small></span>
                 </div>
               ))}

@@ -45,7 +45,7 @@ export function unitOf(c: Challenge): string {
 }
 
 export function fmtValue(c: Challenge, v: number): string {
-  return c.category === 'activity' && c.metric === 'distance' ? (v >= 100 ? v.toFixed(0) : v.toFixed(1)) : String(Math.round(v));
+  return c.category === 'activity' && c.metric === 'distance' ? (v >= 1000 ? v.toFixed(0) : v.toFixed(2)) : String(Math.round(v));
 }
 
 export function goalText(c: Challenge): string {

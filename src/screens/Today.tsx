@@ -115,7 +115,7 @@ export default function Today() {
                   <div key={a.id} className="list-row">
                     <span className="sp" style={{ ['--c' as string]: `var(--${a.sport})` }}><Icon name={a.sport} /></span>
                     <span className="grow"><span className="strong" style={{ display: 'block' }}>{a.name}</span><span className="small muted">{relDay(a.date)}{a.time !== '00:00' ? ` · ${a.time}` : ''}</span></span>
-                    <span className="rv">{a.km.toFixed(1)}<small>km</small></span>
+                    <span className="rv">{a.km.toFixed(2)}<small>km</small></span>
                   </div>
                 ))}
               </div>
@@ -141,7 +141,7 @@ function ExerciseRow({ c, onOpen }: { c: Challenge; onOpen: () => void }) {
   const verb = c.sport === 'run' ? 'run' : c.sport === 'ride' ? 'ride' : 'walk';
   const status = n === 0
     ? `No ${verb} added yet · tap to add from Strava`
-    : `${km.toFixed(1)} km today${goal ? ` of ${goal} km` : ''} · tap to add another`;
+    : `${km.toFixed(2)} km today${goal ? ` of ${goal} km` : ''} · tap to add another`;
   return (
     <button className="hrow" style={{ ['--c' as string]: look.color, width: '100%', textAlign: 'left' }} onClick={onOpen} aria-label={`${c.title}: ${status}`}>
       <span className="sp"><Icon name={look.icon} /></span>
@@ -276,8 +276,8 @@ function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge
         {c.my_daily_target ? (
           <div>
             <div className="lg-t"><span className="dotc" style={{ background: 'var(--today)' }} /><span>Today’s target</span></div>
-            <div className="lg-v" style={{ fontSize: 18 }}>{(p.todayValue ?? 0).toFixed(1)}<small>/ {c.my_daily_target} km</small></div>
-            <div className="lg-s">{p.todayMet ? 'Done for today' : `${(c.my_daily_target - (p.todayValue ?? 0)).toFixed(1)} km to go`}</div>
+            <div className="lg-v" style={{ fontSize: 18 }}>{(p.todayValue ?? 0).toFixed(2)}<small>/ {c.my_daily_target} km</small></div>
+            <div className="lg-s">{p.todayMet ? 'Done for today' : `${Math.max(0, c.my_daily_target - (p.todayValue ?? 0)).toFixed(2)} km to go`}</div>
           </div>
         ) : null}
       </div>
