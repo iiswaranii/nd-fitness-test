@@ -1,3 +1,4 @@
+import { joinByText, regOpensText, fmtWindow } from '../../lib/dates';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Screen } from '../../components/Screen';
@@ -11,7 +12,7 @@ import { useStore } from '../../lib/store';
 import { data } from '../../lib/data';
 import { lookOf } from '../../lib/look';
 import { fmtValue, goalText, progress, status, unitOf } from '../../lib/progress';
-import { fmtDay, fmtRange, today } from '../../lib/dates';
+import { today } from '../../lib/dates';
 import { friendlyError } from '../../lib/errors';
 import { habitByKey, habitGoalText } from '../../lib/habits';
 import { saveCsv, saveXlsx } from '../../lib/exporter';
@@ -76,7 +77,7 @@ export default function AdminChallenge() {
           <p className="eyebrow">{look.kind}</p>
           <h1 className="h1">{c.title}</h1>
           {hasAudience(c) ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="users" />Only for: {audienceText(c)}</span> : null}
-          <p className="small muted">{goalText(c)} · {fmtRange(c.start_date, c.end_date)} · registration {fmtDay(c.reg_opens)} – {fmtDay(c.join_by)}</p>
+          <p className="small muted">{goalText(c)} · {fmtWindow(c)} · registration {regOpensText(c)} – {joinByText(c)}</p>
         </div>
 
         <div className="stat3">

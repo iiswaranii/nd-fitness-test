@@ -1,3 +1,4 @@
+import { fmtMoment, joinByText, regOpensText, fmtWindow } from '../lib/dates';
 import { ReminderPicker, fmtReminder } from '../components/TimeWheel';
 import { useCallback, useEffect, useState } from 'react';
 import { Community } from '../components/Community';
@@ -19,7 +20,7 @@ import { data } from '../lib/data';
 import { lookOf } from '../lib/look';
 import { audienceText, hasAudience } from '../lib/audience';
 import { canJoin, challengeDays, dayText, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
-import { addDays, fmtDay, fmtKm, fmtHms, fmtRange, longDay, parse, relDay, today } from '../lib/dates';
+import { addDays, fmtDay, fmtKm, fmtHms, longDay, parse, relDay, today } from '../lib/dates';
 import { dayMet, habitByKey, habitGoalText } from '../lib/habits';
 import { friendlyError } from '../lib/errors';
 
@@ -153,10 +154,12 @@ export default function ChallengeDetail() {
         <div className="kv">
           <div className="wide"><div className="k">Goal</div><div className="v">{goalText(c)}</div></div>
           {h ? <div className="wide"><div className="k">A day counts when</div><div className="v">{habitGoalText(h, target)}</div></div> : null}
-          <div><div className="k">Dates</div><div className="v">{fmtRange(c.start_date, c.end_date)}</div></div>
+          <div><div className="k">Dates · your time</div><div className="v">{fmtWindow(c)}</div></div>
           <div><div className="k">Members</div><div className="v">{c.member_count}</div></div>
-          <div><div className="k">Registration opens</div><div className="v">{regOpen(c) ? 'Open now' : fmtDay(c.reg_opens)}</div></div>
-          <div><div className="k">Last date to join</div><div className="v">{fmtDay(c.join_by)}</div></div>
+          <div><div className="k">Registration opens</div><div className="v">{regOpen(c) ? 'Open now' : regOpensText(c)}</div></div>
+          <div><div className="k">Join by</div><div className="v">{joinByText(c)}</div></div>
+          {c.joined && c.my_joined_at ? <div className="wide"><div className="k">You joined</div><div className="v">{fmtMoment(c.my_joined_at)}</div></div> : null}
+          <div className="wide"><div className="k">Time zone</div><div className="v" style={{ fontWeight: 600, fontSize: 14 }}>Days and times follow your phone’s time zone. Everyone gets the same full days, wherever they live.</div></div>
           <div className="wide">
             <div className="k">How progress is counted</div>
             <div className="v" style={{ fontWeight: 600, fontSize: 14 }}>
@@ -199,8 +202,8 @@ export default function ChallengeDetail() {
             <div className="card row" style={{ gap: 12, ['--c' as string]: 'var(--warn)' }}>
               <span className="sp"><Icon name="cal" /></span>
               <span className="grow" style={{ minWidth: 0 }}>
-                <span className="strong" style={{ display: 'block' }}>Registration opens {longDay(c.reg_opens)}</span>
-                <span className="small muted">You can join from that day until {fmtDay(c.join_by)}. The challenge starts {fmtDay(c.start_date)}.</span>
+                <span className="strong" style={{ display: 'block' }}>Registration opens {regOpensText(c)}</span>
+                <span className="small muted">You can join until {joinByText(c)}. The challenge starts {fmtDay(c.start_date)}.</span>
               </span>
             </div>
           ) : <p className="legal">Enrolment for this challenge is closed.</p>

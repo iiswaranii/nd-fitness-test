@@ -1,3 +1,4 @@
+import { joinByText, regOpensText, fmtWindow } from '../lib/dates';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
@@ -6,7 +7,7 @@ import { useStore } from '../lib/store';
 import { lookOf } from '../lib/look';
 import { audienceText, hasAudience } from '../lib/audience';
 import { canJoin, dayText, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
-import { fmtDay, fmtRange } from '../lib/dates';
+import { fmtDay } from '../lib/dates';
 import type { Challenge } from '../lib/types';
 
 export function StatusPill({ c, done }: { c: Challenge; done?: boolean }) {
@@ -30,7 +31,7 @@ export function ChallengeCard({ c }: { c: Challenge }) {
         <span className="sp"><Icon name={look.icon} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="cc-t" style={{ display: 'block' }}>{c.title}</span>
-          <span className="cc-s">{look.kind} · {fmtRange(c.start_date, c.end_date)}</span>
+          <span className="cc-s">{look.kind} · {fmtWindow(c)}</span>
         </span>
         {p && st === 'active' ? <span className="pill c">{p.done ? 'Done' : `${Math.floor(p.pct)}%`}</span> : <StatusPill c={c} done={p?.done} />}
       </div>
@@ -77,7 +78,7 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
         <span className="sp"><Icon name={look.icon} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
           <span className="cc-t" style={{ display: 'block' }}>{c.title}</span>
-          <span className="cc-s">{look.kind} · {fmtRange(c.start_date, c.end_date)}</span>
+          <span className="cc-s">{look.kind} · {fmtWindow(c)}</span>
         </span>
         {isNew ? <span className="pill new">New</span> : <StatusPill c={c} />}
       </button>
@@ -88,7 +89,7 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
         <Icon name="users" className="ic" />
         <span className="strong" style={{ fontSize: 13.5 }}>{c.member_count ? `${c.member_count} joined` : 'Be the first to join'}</span>
         <span className="muted" style={{ marginLeft: 'auto', fontWeight: 600 }}>
-          {!c.eligible ? 'View only' : can ? `Join by ${fmtDay(c.join_by)}` : !regOpen(c) ? `Starts ${fmtDay(c.start_date)}` : 'Enrolment closed'}
+          {!c.eligible ? 'View only' : can ? `Join by ${joinByText(c)}` : !regOpen(c) ? `Starts ${fmtDay(c.start_date)}` : 'Enrolment closed'}
         </span>
       </div>
       {!c.eligible ? (
@@ -96,7 +97,7 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
       ) : can ? (
         <button className="btn tint" onClick={(e) => { e.stopPropagation(); markSeen(c.id); onJoin(c); }}><Icon name="plus" />Join challenge</button>
       ) : !regOpen(c) && st !== 'finished' ? (
-        <button className="btn ghost" onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}><Icon name="cal" />Registration opens {fmtDay(c.reg_opens)}</button>
+        <button className="btn ghost" onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}><Icon name="cal" />Registration opens {regOpensText(c)}</button>
       ) : null}
     </div>
   );

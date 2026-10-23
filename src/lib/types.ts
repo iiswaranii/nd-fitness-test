@@ -17,10 +17,17 @@ export type Challenge = {
   daily_target: number | null; // per-day target (ml, minutes, clock minutes…)
   /** km (distance), days (days / habit), or activities (count) */
   target: number;
+  /** Challenge days are calendar days in EACH member's own time zone (like Strava challenges). */
   start_date: string; // YYYY-MM-DD
   end_date: string;
+  /** Local time of day the challenge starts on start_date / ends on end_date ("HH:MM"). Default whole days. */
+  start_time?: string | null;
+  end_time?: string | null;
   reg_opens: string;
   join_by: string;
+  /** Exact moments (UTC ISO). Shown in each phone's local time. Null on very old rows → use the dates. */
+  reg_opens_at?: string | null;
+  join_by_at?: string | null;
   /** Optional audience. All null/empty = everyone can see and join. */
   aud_min_age: number | null;
   aud_max_age: number | null;
@@ -34,11 +41,13 @@ export type Challenge = {
   my_daily_target: number | null;
   /** Daily reminder time for this member, "HH:MM" in their own time zone, or null for none. */
   my_reminder: string | null;
+  /** When this member joined (UTC ISO), or null. */
+  my_joined_at?: string | null;
   /** The signed-in member fits the audience (age group, country, state) and may join. Everyone can view. */
   eligible: boolean;
 };
 
-export type NewChallenge = Omit<Challenge, 'id' | 'created_at' | 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'cancelled' | 'eligible'>;
+export type NewChallenge = Omit<Challenge, 'id' | 'created_at' | 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'my_joined_at' | 'cancelled' | 'eligible'>;
 
 export type Activity = {
   id: string; // Strava activity id

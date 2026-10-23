@@ -1,3 +1,4 @@
+import { joinByText, fmtWindow } from '../lib/dates';
 import { ReminderPicker } from './TimeWheel';
 import { useEffect, useState } from 'react';
 import { Sheet } from './Sheet';
@@ -8,7 +9,6 @@ import { useStore } from '../lib/store';
 import { data } from '../lib/data';
 import { lookOf } from '../lib/look';
 import { goalText } from '../lib/progress';
-import { fmtDay, fmtRange } from '../lib/dates';
 import { habitByKey, habitGoalText } from '../lib/habits';
 import { friendlyError } from '../lib/errors';
 import type { Challenge } from '../lib/types';
@@ -35,7 +35,7 @@ export function JoinSheet({ c, onClose, onJoined }: { c: Challenge | null; onClo
         <div className="stack tight">
           <p className="eyebrow">Join challenge</p>
           <h2 className="h1" style={{ fontSize: 26 }}>{c.title}</h2>
-          <p className="lead">{goalText(c)} · {fmtRange(c.start_date, c.end_date)}</p>
+          <p className="lead">{goalText(c)} · {fmtWindow(c)}</p>
         </div>
         {c.category === 'activity' ? (
           <div className="card stack tight">
@@ -81,7 +81,7 @@ export function JoinSheet({ c, onClose, onJoined }: { c: Challenge | null; onClo
         >
           Join challenge
         </Button>
-        <p className="legal">{c.member_count} {c.member_count === 1 ? 'member has' : 'members have'} joined · join by {fmtDay(c.join_by)}</p>
+        <p className="legal">{c.member_count} {c.member_count === 1 ? 'member has' : 'members have'} joined · join by {joinByText(c)}</p>
       </div>
     </Sheet>
   );

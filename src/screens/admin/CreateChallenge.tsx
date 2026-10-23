@@ -4,13 +4,13 @@ import { Screen } from '../../components/Screen';
 import { Button, ErrorText, TextField } from '../../components/Form';
 import { Icon } from '../../components/Icon';
 import { HabitPicker } from '../../components/HabitPicker';
-import { MultiPicker } from '../../components/Picker';
+import { MultiPicker, Picker } from '../../components/Picker';
 import { COUNTRY_LIST, INDIAN_STATES } from '../../lib/places';
 import { audienceText, hasAudience } from '../../lib/audience';
 import { useToast } from '../../components/Toast';
 import { useStore } from '../../lib/store';
 import { data } from '../../lib/data';
-import { addDays, diffDays, fmtRange, today } from '../../lib/dates';
+import { addDays, clock12, diffDays, fmtRange, localDayEndIso, localDayStartIso, today } from '../../lib/dates';
 import { fmtAmount, fmtClock, habitByKey, habitGoalText, type Habit } from '../../lib/habits';
 import { friendlyError } from '../../lib/errors';
 import { goalText } from '../../lib/progress';
@@ -19,6 +19,10 @@ import { SPORTS, type Category, type Metric, type NewChallenge, type Sport } fro
 
 const toHHMM = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 const fromHHMM = (s: string) => { const [a, b] = s.split(':').map(Number); return a * 60 + (b || 0); };
+
+const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')}:00`);
+const START_TIMES = HOURS.map((v) => ({ value: v, label: clock12(v) }));
+const END_TIMES = [...HOURS.slice(1), '23:59'].map((v) => ({ value: v, label: clock12(v) }));
 
 export default function CreateChallenge() {
   const nav = useNavigate();
@@ -39,6 +43,8 @@ export default function CreateChallenge() {
   const [end, setEnd] = useState(addDays(t, 29));
   const [regOpens, setRegOpens] = useState(t);
   const [joinBy, setJoinBy] = useState(addDays(t, 7));
+  const [startTime, setStartTime] = useState('00:00');
+  const [endTime, setEndTime] = useState('23:59');
   // Optional audience — hidden until switched on.
   const [limit, setLimit] = useState(false);
   const [ageOn, setAgeOn] = useState(false);
@@ -60,11 +66,15 @@ export default function CreateChallenge() {
   const build = (): NewChallenge | string => {
     if (title.trim().length < 3) return 'Give the challenge a title (3 characters or more).';
     if (end < start) return 'The end date must be on or after the start date.';
+    if (category === 'activity' && end === start && endTime <= startTime) return 'On a one-day challenge, the end time must be after the start time.';
     if (regOpens > joinBy) return 'Registration must open on or before the last date to join.';
     if (joinBy > end) return 'The last date to join must be on or before the end date.';
     const base = {
       title: title.trim(), description: desc.trim() || null, category,
       start_date: start, end_date: end, reg_opens: regOpens, join_by: joinBy,
+      start_time: category === 'activity' ? startTime : '00:00', end_time: category === 'activity' ? endTime : '23:59',
+      // Exact moments in UTC: registration opens at the start of that day, closes at 11:59 pm — in the admin's time zone.
+      reg_opens_at: regOpens === today() ? new Date().toISOString() : localDayStartIso(regOpens), join_by_at: localDayEndIso(joinBy),
       sport: null, metric: null, daily_min: null, min_km: null, habit_key: null, daily_target: null,
       aud_min_age: null, aud_max_age: null, aud_countries: null, aud_states: null,
     } as NewChallenge;
@@ -96,7 +106,7 @@ export default function CreateChallenge() {
     const r = build();
     return typeof r === 'string' ? null : r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, title, desc, sport, metric, target, minKm, habit, daily, start, end, regOpens, joinBy, limit, ageOn, minAge, maxAge, countries, states]);
+  }, [category, title, desc, sport, metric, target, minKm, habit, daily, start, end, startTime, endTime, regOpens, joinBy, limit, ageOn, minAge, maxAge, countries, states]);
 
   return (
     <Screen back>
@@ -201,8 +211,16 @@ export default function CreateChallenge() {
         <div className="grid2">
           <TextField label="Starts" type="date" value={start} onChange={(e) => setStart(e.target.value)} />
           <TextField label="Ends" type="date" value={end} min={start} onChange={(e) => setEnd(e.target.value)} />
+          {category === 'activity' ? (
+            <>
+              <Picker label="Start time" value={startTime} options={START_TIMES} search={false} onChange={setStartTime} />
+              <Picker label="End time" value={endTime} options={END_TIMES} search={false} onChange={setEndTime} />
+              <p className="small muted" style={{ gridColumn: '1 / -1', marginTop: -6 }}>Activities count only if they started between these times. Each member’s own local time.</p>
+            </>
+          ) : null}
           <TextField label="Registration opens" type="date" value={regOpens} onChange={(e) => setRegOpens(e.target.value)} />
           <TextField label="Last date to join" type="date" value={joinBy} max={end} onChange={(e) => setJoinBy(e.target.value)} />
+          <p className="small muted" style={{ gridColumn: '1 / -1' }}>Registration opens at 12:00 am and closes at 11:59 pm on these dates, your time ({Intl.DateTimeFormat().resolvedOptions().timeZone}). Members see these times in their own time zone. Challenge days count by each member’s own date.</p>
         </div>
         </section>
 

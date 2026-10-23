@@ -4,17 +4,33 @@ import { dayMet, habitByKey } from './habits';
 
 export type Status = 'upcoming' | 'active' | 'finished' | 'cancelled';
 
+/** "HH:MM" of the challenge's start / end on its first / last day (member's local time). */
+export const startClock = (c: Pick<Challenge, 'start_time'>) => (c.start_time ?? '00:00').slice(0, 5);
+export const endClock = (c: Pick<Challenge, 'end_time'>) => (c.end_time ?? '23:59').slice(0, 5);
+const nowClock = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`; };
+
 export function status(c: Challenge): Status {
   if (c.cancelled) return 'cancelled';
   const t = today();
-  if (t < c.start_date) return 'upcoming';
-  if (t > c.end_date) return 'finished';
+  if (t < c.start_date || (t === c.start_date && nowClock() < startClock(c))) return 'upcoming';
+  if (t > c.end_date || (t === c.end_date && nowClock() > endClock(c))) return 'finished';
   return 'active';
 }
 
-export const regOpen = (c: Challenge) => today() >= c.reg_opens;
+/** Did this activity start inside the challenge window (local date + local start time)? */
+export function inWindow(c: Pick<Challenge, 'start_date' | 'end_date' | 'start_time' | 'end_time'>, a: Pick<Activity, 'date' | 'time'>): boolean {
+  if (a.date < c.start_date || a.date > c.end_date) return false;
+  const known = !!a.time && a.time !== '00:00'; // typed-in activities have no start time: count by date
+  if (known && a.date === c.start_date && a.time < startClock(c)) return false;
+  if (known && a.date === c.end_date && a.time > endClock(c)) return false;
+  return true;
+}
+
+/** Registration is an exact moment (stored UTC), compared with the phone's clock. */
+export const regOpen = (c: Challenge) => (c.reg_opens_at ? Date.now() >= Date.parse(c.reg_opens_at) : today() >= c.reg_opens);
+export const joinStillOpen = (c: Challenge) => (c.join_by_at ? Date.now() <= Date.parse(c.join_by_at) : today() <= c.join_by);
 export const canJoin = (c: Challenge) =>
-  !c.joined && c.eligible !== false && (status(c) === 'active' || status(c) === 'upcoming') && regOpen(c) && today() <= c.join_by;
+  !c.joined && c.eligible !== false && (status(c) === 'active' || status(c) === 'upcoming') && regOpen(c) && joinStillOpen(c);
 export const daysLeft = (c: Challenge) => diffDays(today(), c.end_date) + 1;
 export const totalDays = (c: Challenge) => diffDays(c.start_date, c.end_date) + 1;
 /** Which day of the challenge today is (1-based), clamped to the challenge's length. */
@@ -75,7 +91,7 @@ export function progress(c: Challenge, allActs: Activity[], logs: HabitLog[]): P
   let value = 0, counted: Activity[] = [], metDays: string[] = [], todayValue: number | null = null, todayMet = false;
 
   if (c.category === 'activity') {
-    const inRange = acts.filter((a) => a.sport === c.sport && a.date >= c.start_date && a.date <= end);
+    const inRange = acts.filter((a) => a.sport === c.sport && a.date <= end && inWindow(c, a));
     if (c.metric === 'distance') { counted = inRange; value = inRange.reduce((s, a) => s + a.km, 0); }
     else if (c.metric === 'days') {
       const by: Record<string, number> = {};

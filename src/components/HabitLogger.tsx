@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dayOf, goalText, progress, status, totalDays } from '../lib/progress';
-import { fmtRange } from '../lib/dates';
+import { fmtWindow } from '../lib/dates';
 import { Sheet } from './Sheet';
 import { Button, ErrorText } from './Form';
 import { Icon } from './Icon';
@@ -316,7 +316,7 @@ function ChallengeInfo({ c, onClose }: { c: Challenge; onClose: () => void }) {
       {c.description ? <p className="small" style={{ color: 'var(--ink-2)' }}>{c.description}</p> : null}
       <div className="kv">
         <div><div className="k">Goal</div><div className="v">{goalText(c)}</div></div>
-        <div><div className="k">Dates</div><div className="v">{fmtRange(c.start_date, c.end_date)}</div></div>
+        <div><div className="k">Dates</div><div className="v">{fmtWindow(c)}</div></div>
         <div><div className="k">Your progress</div><div className="v">{Math.round(p.pct)}%{p.done ? ' · done' : ''}</div></div>
         <div><div className="k">Day</div><div className="v">{status(c) === 'finished' ? 'Finished' : status(c) === 'upcoming' ? 'Not started' : `${dayOf(c)} of ${totalDays(c)}`}</div></div>
       </div>

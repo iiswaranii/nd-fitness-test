@@ -122,17 +122,17 @@ const supabaseData: DataApi = {
     const [{ data: cs, error }, { data: counts }, { data: mine }] = await Promise.all([
       sb().from('challenges').select('*, eligible:member_can_see').order('start_date', { ascending: false }),
       sb().rpc('challenge_member_counts'),
-      sb().from('challenge_members').select('challenge_id, daily_target, reminder_time').eq('user_id', me),
+      sb().from('challenge_members').select('challenge_id, daily_target, reminder_time, joined_at').eq('user_id', me),
     ]);
     if (error) throw error;
     const cnt = new Map((counts ?? []).map((r: { challenge_id: string; members: number }) => [r.challenge_id, r.members]));
-    const my = new Map((mine ?? []).map((r: { challenge_id: string; daily_target: number | null; reminder_time: string | null }) => [r.challenge_id, r]));
+    const my = new Map((mine ?? []).map((r: { challenge_id: string; daily_target: number | null; reminder_time: string | null; joined_at?: string | null }) => [r.challenge_id, r]));
     return (cs ?? []).map((c) => ({
       ...c,
       target: Number(c.target), daily_min: c.daily_min === null ? null : Number(c.daily_min), min_km: c.min_km === null ? null : Number(c.min_km),
       daily_target: c.daily_target === null ? null : Number(c.daily_target),
       eligible: c.eligible !== false,
-      member_count: Number(cnt.get(c.id) ?? 0), joined: my.has(c.id), my_daily_target: my.get(c.id)?.daily_target ?? null, my_reminder: my.get(c.id)?.reminder_time?.slice(0, 5) ?? null,
+      member_count: Number(cnt.get(c.id) ?? 0), joined: my.has(c.id), my_daily_target: my.get(c.id)?.daily_target ?? null, my_reminder: my.get(c.id)?.reminder_time?.slice(0, 5) ?? null, my_joined_at: my.get(c.id)?.joined_at ?? null,
     })) as Challenge[];
   },
   async createChallenge(c) {
@@ -315,7 +315,7 @@ const demoData: DataApi = {
       .map((c) => {
       const ms = s.members[c.id] ?? [];
       const mine = ms.find((x) => x.user_id === m.id);
-      return { ...c, eligible: matches(c as Challenge, who), member_count: ms.length, joined: !!mine, my_daily_target: mine?.daily_target ?? null, my_reminder: mine?.reminder ?? null };
+      return { ...c, eligible: matches(c as Challenge, who), member_count: ms.length, joined: !!mine, my_daily_target: mine?.daily_target ?? null, my_reminder: mine?.reminder ?? null, my_joined_at: mine?.joined_at ?? null };
     }).sort((a, b) => b.start_date.localeCompare(a.start_date));
   },
   async createChallenge(c) {

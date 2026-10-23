@@ -7,7 +7,7 @@ import { PullToRefresh, RefreshButton } from '../../components/PullToRefresh';
 import { useStore } from '../../lib/store';
 import { lookOf } from '../../lib/look';
 import { goalText, status } from '../../lib/progress';
-import { fmtRange } from '../../lib/dates';
+import { fmtWindow } from '../../lib/dates';
 import { audienceText, hasAudience } from '../../lib/audience';
 
 export default function AdminHome() {
@@ -59,7 +59,7 @@ export default function AdminHome() {
                         <span className="sp"><Icon name={look.icon} /></span>
                         <span className="grow">
                           <span className="strong" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.title}</span>
-                          <span className="small muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtRange(c.start_date, c.end_date)} · {c.member_count} joined · {goalText(c)}</span>
+                          <span className="small muted" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fmtWindow(c)} · {c.member_count} joined · {goalText(c)}</span>
                           {hasAudience(c) ? <span className="aud-tag" style={{ marginTop: 4 }}><Icon name="users" />{audienceText(c)}</span> : null}
                         </span>
                         <StatusPill c={c} />
