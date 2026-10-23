@@ -8,7 +8,7 @@ export function Page({ children }: { children: ReactNode }) {
     <div className="app">
       <main className="page screen-enter">
         {children}
-        {DEMO_AUTH ? <p className="demo-banner">Test mode · data stays on this phone · code is 123456</p> : null}
+        {DEMO_AUTH ? <p className="demo-banner">Test mode · data stays on this phone</p> : null}
       </main>
       <TabBar />
     </div>

@@ -20,7 +20,7 @@ export function friendlyError(err: unknown): string {
     return 'That took too long. Please try again.';
 
   // ---- sign-in and codes ----
-  if (m.includes('invalid login credentials')) return 'That email and password don’t match. Forgot it? Get a code instead.';
+  if (m.includes('invalid login credentials')) return 'That email and password don’t match. Please check and try again.';
   if (m.includes('email not confirmed')) return 'Please confirm your email first. We’ve sent you a code.';
   if (m.includes('token has expired') || (m.includes('otp') && (m.includes('invalid') || m.includes('expired'))) || m.includes('invalid token'))
     return 'That code is wrong or has expired. Check it, or ask for a new one.';

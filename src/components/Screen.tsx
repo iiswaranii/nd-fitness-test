@@ -56,7 +56,7 @@ export function Screen({
         </div>
       ) : null}
       {children}
-      {DEMO_AUTH ? <p className="demo-banner" style={{ marginTop: 'auto', paddingTop: 20 }}>Demo mode · no real accounts · code is 123456</p> : null}
+      {DEMO_AUTH ? <p className="demo-banner" style={{ marginTop: 'auto', paddingTop: 20 }}>Demo mode · no real accounts</p> : null}
     </div>
   );
 }

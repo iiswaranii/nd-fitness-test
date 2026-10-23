@@ -37,6 +37,8 @@ export interface AuthApi {
   /** True when sign-up uses the fixed test code (no email is sent). */
   readonly testSignup?: boolean;
   signInWithPassword(email: string, password: string): Promise<void>;
+  /** Testing phase: create an account with email + password straight away (no email code), then log in. */
+  signUp(email: string, password: string): Promise<void>;
   /** Sets (or changes) the signed-in member's password. */
   setPassword(password: string): Promise<void>;
   verifyOtp(id: Identifier, code: string, mode?: 'signup' | 'reset'): Promise<void>;
@@ -112,6 +114,15 @@ const supabaseAuth: AuthApi = {
   async signInWithPassword(email, password) {
     const { error } = await sb().auth.signInWithPassword({ email, password });
     if (error) throw error;
+  },
+  async signUp(email, password) {
+    const { error } = await sb().functions.invoke('test-signup', { body: { email, password } });
+    if (error) {
+      const body = await (error as { context?: Response }).context?.json?.().catch(() => null);
+      const e = new Error(body?.error || error.message); e.name = body?.error ? 'SignupError' : error.name; throw e;
+    }
+    const { error: e2 } = await sb().auth.signInWithPassword({ email, password });
+    if (e2) throw e2;
   },
   async setPassword(password) {
     const { data, error } = await sb().auth.updateUser({ password });
@@ -210,6 +221,17 @@ const demoAuth: AuthApi = {
     db.pending = null;
     save(db);
     emit(db);
+  },
+  async signUp(email, password) {
+    await wait(600);
+    const db = load();
+    const key = keyOf({ kind: 'email', email });
+    if (db.accounts[key]?.password) throw new Error('An account with this email already exists. Log in instead.');
+    if (!db.accounts[key]) addAccount(db, key, newAccount({ kind: 'email', email }));
+    const acc = db.accounts[key];
+    acc.password = password; acc.profile.password_set = true;
+    db.session = key; db.pending = null;
+    save(db); emit(db);
   },
   async signInWithPassword(email, password) {
     await wait(600);

@@ -141,7 +141,7 @@ export default function Profile() {
           <div className="list">
             <div className="list-row">
               <span className="sp" style={{ ['--c' as string]: 'var(--ink-2)' }}><Icon name="mail" /></span>
-              <span className="grow"><span className="strong" style={{ display: 'block' }}>Email and password</span><span className="small muted">Forgot it? On the log-in screen, get a code by email.</span></span>
+              <span className="grow"><span className="strong" style={{ display: 'block' }}>Email and password</span><span className="small muted">Forgot it? Ask the admin to reset it.</span></span>
             </div>
             <button className="list-row" onClick={() => nav('/set-password')}>
               <span className="sp" style={{ ['--c' as string]: 'var(--ink-2)' }}><Icon name="shield" /></span>

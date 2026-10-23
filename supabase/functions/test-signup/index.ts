@@ -1,37 +1,40 @@
-// TEST ENVIRONMENT ONLY. Lets testers create an account with a fixed code instead of an emailed one.
-// - Works only while app_keys has a 'test_code' row (delete that row to switch this off instantly).
-// - Only for NEW accounts: an email that already has an account with a password is refused, so nobody
-//   can take over an existing member's account with the fixed code. Password resets still use real codes.
+// Testing-phase sign-up: email + password, no email code.
+// Creates a confirmed account with that password; the app then logs in normally.
+// Switch: works only while app_keys has a 'test_code' row. Delete that row to turn it off.
 import { admin, cors, json } from '../_shared/common.ts';
+
+const pwOk = (p: string) => p.length >= 8 && /[A-Za-z]/.test(p) && /\d/.test(p);
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   try {
     const body = await req.json().catch(() => ({}));
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
-    const code = typeof body.code === 'string' ? body.code.trim() : '';
+    const password = typeof body.password === 'string' ? body.password : '';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json({ error: 'Please enter a valid email address.' }, 400);
+    if (!pwOk(password)) return json({ error: 'Your password needs 8+ characters, a letter and a number.' }, 400);
 
     const db = admin();
     const { data: key } = await db.from('app_keys').select('value').eq('name', 'test_code').maybeSingle();
-    if (!key?.value) return json({ error: 'Test sign-up is switched off. Please use the code we emailed you.' }, 403);
-    if (code !== key.value) return json({ error: 'That code is wrong. Please check it and try again.' }, 400);
+    if (!key?.value) return json({ error: 'Sign-up is closed right now. Please ask the admin.' }, 403);
 
-    // Existing account?
     const { data: prof } = await db.from('profiles').select('id, password_set').eq('email', email).maybeSingle();
     if (prof?.password_set) return json({ error: 'An account with this email already exists. Log in instead.' }, 409);
-    if (!prof) {
-      const { error } = await db.auth.admin.createUser({ email, email_confirm: true });
-      if (error && !/already/i.test(error.message)) throw error;
+
+    let uid = prof?.id as string | undefined;
+    if (uid) {
+      // Started signing up earlier but never set a password: finish it now.
+      const { error } = await db.auth.admin.updateUserById(uid, { password, email_confirm: true });
+      if (error) throw error;
+    } else {
+      const { data, error } = await db.auth.admin.createUser({ email, password, email_confirm: true });
+      if (error) {
+        if (/already/i.test(error.message)) return json({ error: 'An account with this email already exists. Log in instead.' }, 409);
+        throw error;
+      }
+      uid = data.user?.id;
     }
-    // A one-time sign-in token the app exchanges for a session (no email is sent).
-    const { data, error } = await db.auth.admin.generateLink({ type: 'magiclink', email });
-    if (error) throw error;
-    const tokenHash = data?.properties?.hashed_token;
-    if (!tokenHash) throw new Error('No token');
-    return json({ token_hash: tokenHash });
-  } catch (e) {
-    console.error(e);
-    return json({ error: 'Couldn’t create the account just now. Please try again.' }, 500);
-  }
+    if (uid) await db.from('profiles').update({ password_set: true }).eq('id', uid);
+    return json({ ok: true });
+  } catch (e) { console.error(e); return json({ error: 'Couldn’t create the account just now. Please try again.' }, 500); }
 });

@@ -59,7 +59,7 @@ export default function AboutYou() {
     <Screen>
       <form className="stack loose" style={{ paddingTop: 8 }} onSubmit={(e) => { e.preventDefault(); save(); }}>
         <div className="stack tight">
-          <p className="eyebrow">Step 3 of 3</p>
+          <p className="eyebrow">Step 2 of 2</p>
           <h1 className="h1">Set up your profile</h1>
           <p className="lead">Just your name and where you live. The rest is optional.</p>
         </div>

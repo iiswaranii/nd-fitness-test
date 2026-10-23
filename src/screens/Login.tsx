@@ -6,7 +6,7 @@ import { auth } from '../lib/auth';
 import { friendlyError } from '../lib/errors';
 import { normalizeEmail, validateEmail } from '../lib/validation';
 
-/** Returning members: email + password. Forgot it → a code by email. */
+/** Returning members: email + password. (Testing phase: no email codes; the admin resets forgotten passwords.) */
 export default function Login() {
   const nav = useNavigate();
   const [email, setEmail] = useState('');
@@ -38,7 +38,7 @@ export default function Login() {
         </div>
         <ErrorText>{err}</ErrorText>
         <Button type="submit" loading={busy}>Log in</Button>
-        <Link to="/start?mode=reset" className="link-btn" style={{ alignSelf: 'center' }}>Forgot password? Get a code by email</Link>
+        <p className="small muted center-text">Forgot your password? Ask the admin to reset it.</p>
         <p className="small muted center-text">New here? <Link to="/start" replace className="link-btn">Create an account</Link></p>
       </form>
     </Screen>
