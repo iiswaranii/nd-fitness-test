@@ -17,6 +17,8 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    // The page scrolls inside the app shell, not the window.
+    const top = () => (el.closest('[data-scroller]') as HTMLElement | null)?.scrollTop ?? window.scrollY;
     let y0 = -1, x0 = 0, pull = 0, locked = false;
     const set = (p: number) => {
       el.style.setProperty('--pull', `${p}px`);
@@ -24,7 +26,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
     };
     const start = (e: TouchEvent) => {
       const s = stateRef.current;
-      if (s === 'busy' || s === 'done' || window.scrollY > 2 || document.body.style.overflow === 'hidden') { y0 = -1; return; }
+      if (s === 'busy' || s === 'done' || top() > 2 || document.body.style.overflow === 'hidden') { y0 = -1; return; }
       if ((e.target as HTMLElement).closest('.car, .chip-row, .tbl, input, textarea, select')) { y0 = -1; return; }
       y0 = e.touches[0].clientY; x0 = e.touches[0].clientX; pull = 0; locked = false;
     };
@@ -32,7 +34,7 @@ export function PullToRefresh({ onRefresh, children }: { onRefresh: () => Promis
       if (y0 < 0) return;
       const dy = e.touches[0].clientY - y0, dx = Math.abs(e.touches[0].clientX - x0);
       if (!locked) { if (dx > 10 && dx > dy) { y0 = -1; return; } if (dy > 6) locked = true; else return; }
-      if (dy <= 0 || window.scrollY > 2) { pull = 0; set(0); setState('idle'); return; }
+      if (dy <= 0 || top() > 2) { pull = 0; set(0); setState('idle'); return; }
       // Rubber band: the further you pull, the harder it gets.
       pull = Math.min(130, THRESHOLD * (1 - Math.exp(-dy / 160)) * 1.9);
       el.classList.add('pulling');

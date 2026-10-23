@@ -246,18 +246,19 @@ img, svg { max-width: 100%; }
 }
 
 /* =================== App shell, tabs, challenge UI =================== */
-.app { min-height: 100vh; min-height: 100dvh; }
+/* Pinned shell: fills the screen, never scrolls itself. Only .app-scroll scrolls, so the tab bar can't move. */
+.app { position: fixed; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.app-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
 .page {
   max-width: 560px; margin: 0 auto; width: 100%;
   padding-top: calc(var(--sat) + 10px);
   padding-left: max(var(--gutter), var(--sal)); padding-right: max(var(--gutter), var(--sar));
-  /* room for the tab bar + home indicator */
-  padding-bottom: calc(var(--sab) + 96px);
+  padding-bottom: 28px; /* the tab bar sits below the scroll area, not over it */
   display: flex; flex-direction: column; gap: 20px;
 }
 .tabbar {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  position: relative; flex: none; z-index: 30;
+  background: var(--surface);
   -webkit-backdrop-filter: saturate(180%) blur(18px); backdrop-filter: saturate(180%) blur(18px);
   border-top: 1px solid var(--line);
   padding: 6px max(8px, var(--sar)) calc(var(--sab) + 6px) max(8px, var(--sal));
@@ -590,7 +591,7 @@ select.input { padding-right: 36px; background-image: linear-gradient(45deg, tra
 
 /* Phones turned sideways: same column, less vertical padding so content fits. */
 @media (orientation: landscape) and (max-height: 500px) {
-  .page { padding-bottom: calc(var(--sab) + 76px); }
+  .page { padding-bottom: 20px; }
   .tab { min-height: 44px; padding: 3px 0 2px; }
   .tab .ic { width: 22px; height: 22px; }
   .sheet { max-height: calc(100dvh - var(--sat) - 8px); }

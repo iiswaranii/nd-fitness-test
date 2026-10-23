@@ -19,3 +19,17 @@ export function keepFocusedFieldVisible(): void {
     setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
   });
 }
+
+/**
+ * iOS sometimes leaves the whole window shifted after the keyboard closes (or after a fast fling),
+ * which drags fixed bars up the screen. The app shell never needs the window scrolled, so put it back.
+ */
+export function pinWindow(): void {
+  const typing = () => !!(document.activeElement as HTMLElement | null)?.matches?.('input, textarea, select, [contenteditable="true"]');
+  // Never while typing: the phone may move the window to keep the field above the keyboard.
+  const reset = () => { if (!typing() && document.querySelector('.app') && (window.scrollY !== 0 || window.scrollX !== 0)) window.scrollTo(0, 0); };
+  document.addEventListener('focusout', () => setTimeout(reset, 50));
+  window.addEventListener('scroll', reset, { passive: true });
+  window.visualViewport?.addEventListener('resize', () => setTimeout(reset, 50));
+  window.addEventListener('orientationchange', () => setTimeout(reset, 300));
+}

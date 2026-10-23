@@ -5,7 +5,7 @@ import { BrowserRouter, HashRouter } from 'react-router-dom';
 import App from './App';
 import { SessionProvider } from './lib/session';
 import { ToastProvider } from './components/Toast';
-import { keepFocusedFieldVisible, watchKeyboard } from './lib/viewport';
+import { keepFocusedFieldVisible, pinWindow, watchKeyboard } from './lib/viewport';
 import { captureInstallPrompt } from './lib/platform';
 import { InstallGate } from './components/InstallGate';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -14,6 +14,7 @@ import { HASH_ROUTER } from './lib/config';
 
 captureInstallPrompt();
 watchKeyboard();
+pinWindow();
 keepFocusedFieldVisible();
 if (!HASH_ROUTER) import('virtual:pwa-register').then((m) => m.registerSW({ immediate: true })).catch(() => {});
 const Router = HASH_ROUTER ? HashRouter : BrowserRouter;
