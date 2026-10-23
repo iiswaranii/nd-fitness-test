@@ -1,3 +1,4 @@
+import { getTheme, setTheme, type Theme } from '../lib/theme';
 import { BrandMark } from '../components/BrandMark';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -41,6 +42,7 @@ export default function Profile() {
   const [body, setBody] = useState<Body>({ height_cm: '', weight_kg: '' });
   const [mob, setMob] = useState<Mobile>(mobileFrom(null));
   const [wipe, setWipe] = useState(false);
+  const [theme, setThemeState] = useState<Theme>(getTheme);
 
   useEffect(() => {
     setName(profile?.full_name ?? user?.name ?? '');
@@ -99,6 +101,19 @@ export default function Profile() {
         </button>
 
         <NotificationSettings />
+
+        <div className="stack tight">
+          <h2 className="h2">Appearance</h2>
+          <div className="seg" role="radiogroup" aria-label="Theme">
+            {([['system', 'Auto', 'sparkle'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']] as const).map(([k, l, ic]) => (
+              <button key={k} type="button" role="radio" aria-checked={theme === k} aria-selected={theme === k}
+                onClick={() => { setTheme(k); setThemeState(k); }} style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <Icon name={ic} />{l}
+              </button>
+            ))}
+          </div>
+          <p className="small muted">Auto follows your phone’s setting.</p>
+        </div>
 
         <div className="stack tight">
           <h2 className="h2">Strava</h2>

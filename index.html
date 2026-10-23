@@ -7,6 +7,10 @@
     <meta name="theme-color" content="#F3F4F6" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0A0B0E" media="(prefers-color-scheme: dark)" />
     <meta name="color-scheme" content="light dark" />
+    <script>
+      // Apply the saved light/dark choice before first paint (see src/lib/theme.ts).
+      try { var t = localStorage.getItem('ndf-theme'); if (t === 'light' || t === 'dark') { document.documentElement.dataset.theme = t; document.querySelector('meta[name="color-scheme"]').setAttribute('content', t); } } catch (e) {}
+    </script>
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
