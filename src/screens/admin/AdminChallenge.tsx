@@ -48,7 +48,7 @@ export default function AdminChallenge() {
   const { id } = useParams();
   const nav = useNavigate();
   const toast = useToast();
-  const { challenges, reload } = useStore();
+  const { allChallenges: challenges, reload } = useStore();
   const c = challenges.find((x) => x.id === id);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState<string | null>(null);

@@ -9,7 +9,10 @@ import { visibleActivities } from './progress';
 type Store = {
   loading: boolean;
   error: string | null;
+  /** What members see: cancelled challenges are left out. */
   challenges: Challenge[];
+  /** Everything, including cancelled — for the admin panel only. */
+  allChallenges: Challenge[];
   /** The member's activities (removed ones left out). */
   activities: Activity[];
   /** Including removed ones: pass these to progress(), which keeps them for challenges that had finished. */
@@ -92,10 +95,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, [logs]);
 
   const visible = useMemo(() => visibleActivities(activities), [activities]);
+  const memberChallenges = useMemo(() => challenges.filter((c) => !c.cancelled), [challenges]);
   const value = useMemo<Store>(() => ({
-    loading, error, challenges, activities: visible, allActivities: activities, logs, reload, saveLog,
+    loading, error, challenges: memberChallenges, allChallenges: challenges, activities: visible, allActivities: activities, logs, reload, saveLog,
     isAdmin: profile?.role === 'admin', newIds, markSeen,
-  }), [loading, error, challenges, activities, visible, logs, reload, saveLog, profile?.role, newIds, markSeen]);
+  }), [loading, error, challenges, memberChallenges, activities, visible, logs, reload, saveLog, profile?.role, newIds, markSeen]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

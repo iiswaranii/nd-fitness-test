@@ -12,7 +12,7 @@ import { audienceText, hasAudience } from '../../lib/audience';
 
 export default function AdminHome() {
   const nav = useNavigate();
-  const { challenges, reload } = useStore();
+  const { allChallenges: challenges, reload } = useStore();
   const order = ['active', 'upcoming', 'finished', 'cancelled'] as const;
   const live = challenges.filter((c) => status(c) === 'active').length;
   const members = challenges.filter((c) => status(c) === 'active').reduce((s, c) => s + c.member_count, 0);

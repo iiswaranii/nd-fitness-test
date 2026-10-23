@@ -37,7 +37,7 @@ function groupCount(xs: MemberStat[], key: (m: MemberStat) => string, top = 10) 
 export default function Insights() {
   const nav = useNavigate();
   const toast = useToast();
-  const { challenges, reload } = useStore();
+  const { allChallenges: challenges, reload } = useStore();
   const [all, setAll] = useState<MemberStat[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [country, setCountry] = useState('All');
