@@ -43,6 +43,7 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
 
   if (!hasBoard(c)) {
     const g = together(c, rows);
+    const names = [...rows].sort((x, y) => Number(y.me) - Number(x.me) || x.name.localeCompare(y.name));
     return (
       <section className="card stack" style={{ ['--c' as string]: look.color }}>
         <div className="row" style={{ gap: 12 }}>
@@ -60,6 +61,21 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
         <p className="small" style={{ color: 'var(--ink-2)' }}>
           {!me ? `${g.loggedToday} ${g.loggedToday === 1 ? 'member has' : 'members have'} logged today.` : g.loggedToday >= 2 ? `${g.loggedToday} members have already logged today. Join them!` : 'Be one of the first to log today and set the tone for everyone.'}
         </p>
+        {names.length ? (
+          <div className="stack tight">
+            <p className="grp-h" style={{ margin: 0 }}>Who’s taking part</p>
+            {/* Names only, A–Z (you first): no numbers or totals, so nobody reads it as a ranking. */}
+            <div className="list">
+              {names.filter((_, i) => all || i < 8).map((r) => (
+                <div key={r.user_id} className={`board-row ${r.me ? 'me' : ''}`}>
+                  <Avatar name={r.name} size={36} />
+                  <span className="strong nm grow" style={{ minWidth: 0 }}>{r.name}<Flag country={r.country} />{r.me ? <span className="you">You</span> : null}</span>
+                </div>
+              ))}
+            </div>
+            {names.length > 8 ? <button className="link-btn" onClick={() => setAll((a) => !a)}>{all ? 'Show less' : `Show all ${names.length}`}</button> : null}
+          </div>
+        ) : null}
       </section>
     );
   }
