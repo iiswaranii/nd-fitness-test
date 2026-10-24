@@ -17,8 +17,8 @@ export function TabBar() {
     <nav className="tabbar" style={{ ['--n' as string]: tabs.length }} aria-label="Main">
       {tabs.map((t) => (
         <NavLink key={t.to} to={t.to} end={t.end} className="tab">
-          <Icon name={t.icon} />
-          <span>{t.label}</span>
+          <span className="tab-pill" aria-hidden="true"><Icon name={t.icon} /></span>
+          <span className="tab-l">{t.label}</span>
           {'badge' in t && t.badge ? <span className="tab-badge" aria-label={`${t.badge} new`}>{t.badge}</span> : null}
         </NavLink>
       ))}

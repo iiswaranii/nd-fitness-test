@@ -7,6 +7,7 @@
   --line: rgba(16,18,23,.08); --line-strong: rgba(16,18,23,.16); --card-line: rgba(16,18,23,.04);
   --btn: #101217; --btn-ink: #FFFFFF;
   --walk: #EE7A12; --run: #E0386A; --ride: #1A8BD3; --today: #1FA862;
+  --brand: #E8336E;
   --good: #1A9A52; --warn: #C98404; --bad: #D4343C; --strava: #FC4C02; --focus: #1A8BD3;
   --shadow: 0 1px 2px rgba(16,18,23,.04), 0 6px 20px rgba(16,18,23,.05);
   --scrim: rgba(6,8,12,.45);
@@ -29,6 +30,7 @@
     --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.18); --card-line: rgba(255,255,255,.06);
     --btn: #F3F4F6; --btn-ink: #0A0B0E;
     --walk: #FF9433; --run: #FF5C8A; --ride: #3DAAF2; --today: #3BD884;
+    --brand: #FF5C8D;
     --good: #3BD27E; --warn: #F2AE3D; --bad: #FF5D64; --focus: #3DAAF2;
     --shadow: none; --scrim: rgba(0,0,0,.6);
     color-scheme: dark;
@@ -41,6 +43,7 @@
     --line: rgba(255,255,255,.08); --line-strong: rgba(255,255,255,.18); --card-line: rgba(255,255,255,.06);
     --btn: #F3F4F6; --btn-ink: #0A0B0E;
     --walk: #FF9433; --run: #FF5C8A; --ride: #3DAAF2; --today: #3BD884;
+    --brand: #FF5C8D;
     --good: #3BD27E; --warn: #F2AE3D; --bad: #FF5D64; --focus: #3DAAF2;
     --shadow: none; --scrim: rgba(0,0,0,.6);
     color-scheme: dark;
@@ -267,6 +270,12 @@ img, svg { max-width: 100%; }
 .tab { background: none; border: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0 4px; min-height: 52px; color: var(--muted); font-size: 11px; font-weight: 700; text-decoration: none; border-radius: 12px; }
 .tab .ic { width: 25px; height: 25px; }
 .tab[aria-current="page"] { color: var(--ink); }
+/* Active tab: a soft brand-pink pill behind the icon + darker, bolder label (Material 3 / iOS-like). */
+.tab-pill { display: grid; place-items: center; width: 56px; height: 30px; border-radius: 99px; transition: background-color .2s, color .2s; }
+.tab[aria-current="page"] .tab-pill { background: color-mix(in srgb, var(--brand) 15%, transparent); color: var(--brand); }
+.tab[aria-current="page"] .tab-pill .ic { stroke-width: 2.3; }
+.tab[aria-current="page"] .tab-l { font-weight: 800; }
+.tab:not([aria-current="page"]) { color: color-mix(in srgb, var(--muted) 92%, transparent); }
 .page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; min-height: 48px; }
 .page-head > div { min-width: 0; }
 .sec { display: flex; flex-direction: column; gap: 10px; }
@@ -458,7 +467,7 @@ select.input { padding-right: 36px; background-image: linear-gradient(45deg, tra
 .is-new { box-shadow: 0 0 0 2px var(--c), var(--shadow); }
 .pill.new { background: var(--ride); color: #FFFFFF; }
 .tab { position: relative; }
-.tab-badge { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--bad); color: #FFFFFF; font-size: 11px; font-weight: 800; display: grid; place-items: center; border: 2px solid var(--surface); }
+.tab-badge { position: absolute; top: 0; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px; background: var(--bad); color: #FFFFFF; font-size: 11px; font-weight: 800; display: grid; place-items: center; border: 2px solid var(--surface); }
 
 /* badges */
 .badge-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 8px; }
@@ -571,7 +580,7 @@ select.input { padding-right: 36px; background-image: linear-gradient(45deg, tra
   .stat3 { grid-template-columns: 1fr 1fr; }
   .kpis { grid-template-columns: 1fr; }
   .slegend { grid-template-columns: 1fr 1fr; }
-  .tab span { font-size: 10px; }
+  .tab .tab-l { font-size: 10px; }
   .badge-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .head-actions .refresh-btn { display: none; } /* pull-to-refresh still works */
 }
@@ -594,6 +603,7 @@ select.input { padding-right: 36px; background-image: linear-gradient(45deg, tra
   .page { padding-bottom: 20px; }
   .tab { min-height: 44px; padding: 3px 0 2px; }
   .tab .ic { width: 22px; height: 22px; }
+  .tab-pill { height: 26px; }
   .sheet { max-height: calc(100dvh - var(--sat) - 8px); }
 }
 
