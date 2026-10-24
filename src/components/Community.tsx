@@ -1,3 +1,5 @@
+import { resultsOf } from '../lib/results';
+import { fmtMoment } from '../lib/dates';
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { Avatar } from './Avatar';
@@ -11,6 +13,9 @@ import { status } from '../lib/progress';
 import type { Challenge, Participant } from '../lib/types';
 import { Flag } from './Flag';
 import { Trophy, type Tier } from './Trophy';
+
+/** "India", "India and Canada", "India, Canada and the UK" */
+const listOf = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 /**
  * The community part of a challenge.
@@ -80,6 +85,11 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
     );
   }
 
+  // Results are final only when the last member's final day is over (members can live in different time zones).
+  const res = resultsOf(c, ps);
+  const final = finished && res.final;
+  const waiting = finished && !res.final;
+  const resultsTime = fmtMoment(new Date(res.at).toISOString());
   const myIndex = rows.findIndex((r) => r.me);
   // Podium for the top three who have actually scored; the list continues from 4th.
   const ranked = rows.map((r, i) => ({ ...r, rank: i + 1 }));
@@ -90,7 +100,20 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
 
   return (
     <section className="sec" style={{ ['--c' as string]: look.color }}>
-      <div className="sec-h"><h2 className="h2">Leaderboard</h2><span className="small muted">{rows.length} {rows.length === 1 ? 'member' : 'members'}</span></div>
+      <div className="sec-h"><h2 className="h2">{waiting ? 'Standings so far' : 'Leaderboard'}</h2><span className="small muted">{rows.length} {rows.length === 1 ? 'member' : 'members'}</span></div>
+      {waiting ? (
+        <div className="results-wait" role="status">
+          <span className="rw-ic"><Icon name="clock" /></span>
+          <div style={{ minWidth: 0 }}>
+            <p className="strong">Final results at {resultsTime}</p>
+            <p className="small muted">
+              {res.stillGoing.length ? `Members in ${listOf(res.stillGoing)} are still on their last day.` : 'Some members are still on their last day in their time zone.'} Everyone gets the same full days, so we wait for them.
+            </p>
+          </div>
+        </div>
+      ) : !finished && res.spread ? (
+        <p className="small muted results-note"><Icon name="users" className="ic" />Members are in different time zones. Final results: {resultsTime}.</p>
+      ) : null}
       {myIndex >= 0 && !finished ? (
         <div className="nudge">
           <Icon name="sparkle" />
@@ -109,7 +132,7 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
           <span className="rv">{fmt(wow.now)}</span>
         </div>
       ) : null}
-      {podium.length ? <Podium rows={podium} finished={finished} /> : null}
+      {podium.length ? <Podium rows={podium} finished={final} /> : null}
       {shown.length ? <div className="list">
         {shown.map((r) => (
           <div key={r.user_id} className={`board-row ${r.me ? 'me' : ''}`}>

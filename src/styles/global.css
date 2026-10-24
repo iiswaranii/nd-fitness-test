@@ -693,3 +693,9 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .gflow { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px; }
 .gflow span { display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 99px; background: var(--surface-2); font-weight: 700; font-size: 13.5px; }
 .gflow i { color: var(--muted); font-style: normal; }
+
+/* ---------- results wait (members in different time zones) ---------- */
+.results-wait { display: flex; gap: 12px; align-items: flex-start; padding: 14px; border-radius: 18px; background: color-mix(in srgb, var(--focus) 9%, var(--surface)); border: 1px solid color-mix(in srgb, var(--focus) 22%, transparent); }
+.results-wait .rw-ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--focus) 16%, transparent); color: var(--focus); flex: none; }
+.results-note { display: flex; align-items: center; gap: 6px; margin-top: -4px; }
+.results-note .ic { width: 16px; height: 16px; flex: none; }

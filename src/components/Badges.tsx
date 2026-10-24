@@ -1,3 +1,4 @@
+import { resultsOf } from '../lib/results';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
@@ -30,6 +31,7 @@ export function usePlacings(): Placings {
       const p: Placings = {};
       for (const r of rs) {
         if (!r) continue;
+        if (!resultsOf(r[0], r[1]).final) continue; // trophies only once every time zone has finished
         const rows = rankBoard(r[0], r[1], user.id);
         const i = rows.findIndex((x) => x.me);
         if (i >= 0 && rows[i].value > 0) p[r[0].id] = { rank: i + 1, of: rows.length };

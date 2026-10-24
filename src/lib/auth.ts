@@ -19,6 +19,8 @@ export type Profile = {
   email: string | null;
   phone: string | null;
   password_set: boolean;
+  /** Phone time zone, saved when the app opens. */
+  tz?: string | null;
   /** Set by the member's first Strava activity link: only that athlete's activities are accepted after. */
   strava_connected: boolean;
   strava_athlete_name: string | null;
@@ -44,7 +46,7 @@ export interface AuthApi {
   verifyOtp(id: Identifier, code: string, mode?: 'signup' | 'reset'): Promise<void>;
   signOut(): Promise<void>;
   getProfile(uid: string): Promise<Profile | null>;
-  updateProfile(uid: string, patch: Partial<Pick<Profile, 'full_name' | 'city' | 'state' | 'country' | 'notify_new_challenges'>>): Promise<void>;
+  updateProfile(uid: string, patch: Partial<Pick<Profile, 'full_name' | 'city' | 'state' | 'country' | 'notify_new_challenges' | 'tz'>>): Promise<void>;
 }
 
 /* ------------------------------------------------------------------ */

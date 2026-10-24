@@ -1,3 +1,4 @@
+import { myTz } from './results';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { auth, type AppUser, type Profile } from './auth';
 
@@ -44,6 +45,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   }, [loadProfile]);
 
   const refreshProfile = useCallback(() => loadProfile(user), [loadProfile, user]);
+
+  // Keep the member's phone time zone on their profile, so challenge results wait for the last time zone.
+  useEffect(() => {
+    if (!user || !profile) return;
+    const tz = myTz();
+    if (profile.tz !== tz) auth.updateProfile(user.id, { tz }).catch(() => { /* not important enough to bother the member */ });
+  }, [user, profile]);
 
   // Coming back to the app (e.g. after approving Strava in the browser) picks up profile changes.
   useEffect(() => {

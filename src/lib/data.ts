@@ -245,8 +245,8 @@ const supabaseData: DataApi = {
   async board(challengeId) {
     const { data, error } = await sb().rpc('challenge_board', { cid: challengeId });
     if (error) throw error;
-    return (data ?? []).map((r: { user_id: string; name: string; city: string | null; country: string | null; activities: Activity[]; logs: HabitLog[] }) => ({
-      user_id: r.user_id, name: r.name, city: r.city, country: r.country ?? null, strava_connected: true, joined_at: '',
+    return (data ?? []).map((r: { user_id: string; name: string; city: string | null; country: string | null; tz?: string | null; activities: Activity[]; logs: HabitLog[] }) => ({
+      user_id: r.user_id, name: r.name, city: r.city, country: r.country ?? null, tz: r.tz ?? null, strava_connected: true, joined_at: '',
       activities: (r.activities ?? []).map((a) => ({ ...a, km: Number(a.km) })),
       logs: (r.logs ?? []).map((l) => ({ ...l, value: Number(l.value) })),
     }));

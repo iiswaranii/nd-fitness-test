@@ -78,6 +78,8 @@ export type Participant = {
   name: string;
   city: string | null;
   country: string | null;
+  /** Phone time zone (IANA), when known. */
+  tz?: string | null;
   strava_connected: boolean;
   joined_at: string;
   activities: Activity[];
