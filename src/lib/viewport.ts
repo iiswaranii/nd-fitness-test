@@ -33,3 +33,15 @@ export function pinWindow(): void {
   window.visualViewport?.addEventListener('resize', () => setTimeout(reset, 50));
   window.addEventListener('orientationchange', () => setTimeout(reset, 300));
 }
+
+/**
+ * No pinch-zoom anywhere in the app (it should feel like a native app).
+ * Android/Chrome obey the viewport meta; iPhone Safari ignores user-scalable=no, so we also stop
+ * its gesture events and two-finger moves. Single-finger scrolling is untouched.
+ */
+export function blockZoom(): void {
+  const stop = (e: Event) => { if (e.cancelable) e.preventDefault(); };
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, stop, { passive: false }));
+  document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) stop(e); }, { passive: false });
+  // Double-tap zoom is turned off in CSS (touch-action), which keeps fast repeated taps working.
+}

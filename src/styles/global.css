@@ -52,9 +52,9 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 [hidden] { display: none !important; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; height: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; height: 100%; touch-action: pan-x pan-y; } /* scroll yes, pinch-zoom no */
 body {
-  margin: 0; min-height: 100%; background: var(--bg); color: var(--ink);
+  margin: 0; min-height: 100%; background: var(--bg); color: var(--ink); touch-action: pan-x pan-y;
   font-family: var(--font-b); font-size: 16px; line-height: 1.45;
   -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none; /* no rubber-band reveal of white behind the app */
@@ -251,7 +251,7 @@ img, svg { max-width: 100%; }
 /* =================== App shell, tabs, challenge UI =================== */
 /* Pinned shell: fills the screen, never scrolls itself. Only .app-scroll scrolls, so the tab bar can't move. */
 .app { position: fixed; inset: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
-.app-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+.app-scroll { touch-action: pan-x pan-y; flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
 .page {
   max-width: 560px; margin: 0 auto; width: 100%;
   padding-top: calc(var(--sat) + 10px);
@@ -709,3 +709,6 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .results-wait .rw-ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--focus) 16%, transparent); color: var(--focus); flex: none; }
 .results-note { display: flex; align-items: center; gap: 6px; margin-top: -4px; }
 .results-note .ic { width: 16px; height: 16px; flex: none; }
+
+/* Pinch-zoom off inside every scrolling area too (touch-action doesn't pass through scroll containers). */
+.sheet-body, .car, .chip-row, .wheel, .tbl { touch-action: pan-x pan-y; }
