@@ -717,3 +717,46 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .gender-seg button { font-size: 14px; padding: 0 6px; line-height: 1.15; }
 .gender-seg.err { box-shadow: 0 0 0 2px var(--bad); }
 .g-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; vertical-align: 1px; }
+
+/* ---------- results deck: finished-challenge cards (swipe away) ---------- */
+.rdeck { position: fixed; inset: 0; z-index: 70; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  padding: calc(var(--sat) + 56px) 20px calc(var(--sab) + 24px); background: rgb(8 9 12 / .55); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  animation: rdeck-in .3s ease both; touch-action: none; }
+.rdeck.out { animation: rdeck-out .28s ease both; }
+@keyframes rdeck-in { from { opacity: 0; } }
+@keyframes rdeck-out { to { opacity: 0; } }
+.rdeck-x { position: absolute; top: calc(var(--sat) + 12px); right: 16px; width: 40px; height: 40px; border-radius: 50%; border: 0; display: grid; place-items: center; background: rgb(255 255 255 / .16); color: #FFFFFF; }
+.rdeck-stack { position: relative; width: min(340px, 100%); height: min(500px, calc(100dvh - var(--sat) - var(--sab) - 150px)); perspective: 1100px; }
+.rdeck-hint { color: rgb(255 255 255 / .8); font-size: 13px; font-weight: 700; }
+.rcard { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 18px 18px 16px;
+  border-radius: 28px; background: var(--surface); color: var(--ink); overflow: hidden; transform-style: preserve-3d; will-change: transform;
+  box-shadow: 0 24px 60px -18px rgb(0 0 0 / .55), 0 0 0 1px var(--card-line); user-select: none; -webkit-user-select: none; touch-action: none; }
+.rcard.top { cursor: grab; }
+.rcard.top:active { cursor: grabbing; }
+.rcard::before { content: ''; position: absolute; inset: 0 0 auto; height: 46%; pointer-events: none;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--c) 22%, transparent), transparent); }
+.rcard > * { position: relative; }
+.rcard-band { display: flex; align-items: center; gap: 8px; align-self: stretch; justify-content: center; }
+.rcard-ic { width: 30px; height: 30px; border-radius: 10px; display: grid; place-items: center; background: color-mix(in srgb, var(--c) 20%, var(--surface)); color: var(--c); }
+.rcard-ic .ic { width: 18px; height: 18px; }
+.rcard-eyebrow { font-size: 12.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-2); }
+.rcard-title { font-family: var(--font-d); font-size: 22px; font-weight: 700; letter-spacing: -.02em; line-height: 1.15; margin: 6px 0 0; text-wrap: balance; }
+.rcard-dates { font-size: 13px; color: var(--muted); }
+.rcard-hero { flex: 1; min-height: 96px; display: grid; place-items: center; }
+.rcard-hero .trophy { filter: drop-shadow(0 10px 16px rgb(0 0 0 / .25)); }
+.rcard-rank { display: flex; flex-direction: column; align-items: center; }
+.rcard-rank b { font-family: var(--font-d); font-size: 56px; line-height: 1; letter-spacing: -.04em; color: var(--c); }
+.rcard-rank span { font-size: 14px; color: var(--muted); font-weight: 700; }
+.rcard-badge { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center; border: 6px solid color-mix(in srgb, var(--c) 30%, transparent); color: var(--c); }
+.rcard-badge.ok { background: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); color: #FFFFFF; }
+.rcard-badge .ic { width: 44px; height: 44px; stroke-width: 2.6; }
+.rcard-badge b { font-family: var(--font-d); font-size: 26px; }
+.rcard-head { font-size: 18px; font-weight: 800; letter-spacing: -.01em; }
+.rcard-sub { font-size: 14px; color: var(--muted); margin-top: -2px; }
+.rcard-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-self: stretch; margin-top: 8px; }
+.rcard-stats div { background: var(--surface-2); border-radius: 14px; padding: 10px 4px; display: flex; flex-direction: column; }
+.rcard-stats b { font-family: var(--font-d); font-size: 19px; font-variant-numeric: tabular-nums; }
+.rcard-stats span { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+.rcard-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-self: stretch; margin-top: 10px; }
+.rcard-actions .btn { min-height: 46px; }
+@media (max-height: 640px) { .rcard-hero { min-height: 70px; } .rcard-hero .trophy { width: 72px; height: 72px; } .rcard-title { font-size: 19px; } }

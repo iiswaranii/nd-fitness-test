@@ -1,3 +1,4 @@
+import { ResultsDeck } from './components/ResultsDeck';
 import { TrophiesPage, BadgesPage } from './screens/Awards';
 import Guide from './screens/Guide';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
@@ -79,6 +80,7 @@ function MemberRoutes() {
         <Route path="/admin/c/:id" element={<AdminOnly><AdminChallenge /></AdminOnly>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      <ResultsDeck />
     </StoreProvider>
   );
 }

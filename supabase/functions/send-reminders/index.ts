@@ -1,5 +1,7 @@
-// Runs every 5 minutes (pg_cron). Sends each member's daily reminder at their chosen local time,
-// only for active challenges they haven't logged today, at most once a day per challenge.
+// Runs every 5 minutes (pg_cron). Three kinds of phone notifications, each at most once:
+//  1. Daily reminder at the member's chosen local time, only if they haven't logged today.
+//  2. Last day: at 6 pm local on the challenge's final day (or 3 h before its end time), only if not logged today.
+//  3. Results are in: when the challenge is over in every member's time zone (final results).
 import { admin, cors, json } from '../_shared/common.ts';
 import { sendAll, type Sub } from '../_shared/push.ts';
 
@@ -8,6 +10,22 @@ function localNow(tz: string) {
     .formatToParts(new Date()).reduce<Record<string, string>>((m, p) => { m[p.type] = p.value; return m; }, {});
   return { date: `${parts.year}-${parts.month}-${parts.day}`, minutes: Number(parts.hour) * 60 + Number(parts.minute) };
 }
+
+function offsetMin(tz: string, t: number) {
+  const p = new Intl.DateTimeFormat('en-US', { timeZone: tz, hourCycle: 'h23', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    .formatToParts(new Date(t)).reduce<Record<string, string>>((m, x) => { m[x.type] = x.value; return m; }, {});
+  return (Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour % 24, +p.minute, +p.second) - t) / 60000;
+}
+/** The exact moment a local date + "HH:MM" (end of that minute) happens in a time zone. */
+function zonedEnd(date: string, hhmm: string, tz: string) {
+  const [y, m, d] = date.split('-').map(Number), [h, mi] = hhmm.split(':').map(Number);
+  const guess = Date.UTC(y, m - 1, d, h, mi, 59);
+  let t = guess - offsetMin(tz, guess) * 60000;
+  const again = guess - offsetMin(tz, t) * 60000;
+  if (again !== t) t = again;
+  return t;
+}
+const safeTz = (tz?: string | null) => { try { if (tz) { new Intl.DateTimeFormat('en-US', { timeZone: tz }); return tz; } } catch { /* bad zone */ } return 'Asia/Kolkata'; };
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
@@ -21,7 +39,7 @@ Deno.serve(async (req) => {
       .select('challenge_id, user_id, reminder_time, last_reminded, challenges!inner(id, title, category, sport, habit_key, start_date, end_date, cancelled)')
       .not('reminder_time', 'is', null)
       .eq('challenges.cancelled', false);
-    if (!rows?.length) return json({ sent: 0 });
+    if (!rows?.length) return json({ sent: await lastDayAndResults(db) });
 
     const userIds = [...new Set(rows.map((r) => r.user_id))];
     const { data: subs } = await db.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id, tz').in('user_id', userIds);
@@ -53,9 +71,81 @@ Deno.serve(async (req) => {
       }));
       await db.from('challenge_members').update({ last_reminded: date }).eq('challenge_id', c.id).eq('user_id', r.user_id);
     }
+    sent += await lastDayAndResults(db);
     return json({ sent });
   } catch (e) {
     console.error(e);
     return json({ error: 'Reminder run failed.' }, 500);
   }
 });
+
+type Row = { challenge_id: string; user_id: string; ending_notified: string | null; result_notified: boolean | null;
+  challenges: { id: string; title: string; category: string; sport: string | null; start_date: string; end_date: string; end_time: string | null } };
+
+/** 2 + 3: last-day nudge and "results are in". */
+async function lastDayAndResults(db: ReturnType<typeof admin>): Promise<number> {
+  const from = new Date(Date.now() - 4 * 864e5).toISOString().slice(0, 10);
+  const to = new Date(Date.now() + 2 * 864e5).toISOString().slice(0, 10);
+  const { data } = await db.from('challenge_members')
+    .select('challenge_id, user_id, ending_notified, result_notified, challenges!inner(id, title, category, sport, start_date, end_date, end_time, cancelled)')
+    .eq('challenges.cancelled', false).gte('challenges.end_date', from).lte('challenges.end_date', to);
+  const rows = (data ?? []) as unknown as Row[];
+  if (!rows.length) return 0;
+
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const [{ data: subs }, { data: profs }] = await Promise.all([
+    db.from('push_subscriptions').select('id, endpoint, p256dh, auth, user_id, tz').in('user_id', userIds),
+    db.from('profiles').select('id, tz').in('id', userIds),
+  ]);
+  const subsBy = new Map<string, Sub[]>();
+  (subs ?? []).forEach((s) => subsBy.set(s.user_id, [...(subsBy.get(s.user_id) ?? []), s as Sub]));
+  const tzOf = (uid: string) => safeTz(subsBy.get(uid)?.[0]?.tz || (profs ?? []).find((p) => p.id === uid)?.tz);
+
+  // When each challenge's results are final: the latest end among its members' time zones.
+  const finalAt = new Map<string, number>();
+  for (const r of rows) {
+    const c = r.challenges;
+    const t = zonedEnd(c.end_date, String(c.end_time ?? '23:59').slice(0, 5), tzOf(r.user_id));
+    finalAt.set(c.id, Math.max(finalAt.get(c.id) ?? 0, t));
+  }
+
+  let sent = 0;
+  const now = Date.now();
+  for (const r of rows) {
+    const c = r.challenges;
+    const mySubs = subsBy.get(r.user_id);
+    if (!mySubs?.length) continue;
+    const tz = tzOf(r.user_id);
+    const { date, minutes } = localNow(tz);
+
+    // 3. Results are in (once, for everyone who took part).
+    if (!r.result_notified && now > (finalAt.get(c.id) ?? Infinity)) {
+      sent += await sendAll(db, mySubs, () => ({
+        title: `Results are in: ${c.title}`,
+        body: 'The challenge is over. Open the app to see how you did.',
+        url: `c/${c.id}`, tag: `res-${c.id}`,
+      }));
+      await db.from('challenge_members').update({ result_notified: true }).eq('challenge_id', c.id).eq('user_id', r.user_id);
+      continue;
+    }
+
+    // 2. Last day, not logged yet.
+    if (date !== c.end_date || r.ending_notified === date) continue;
+    const [eh, em] = String(c.end_time ?? '23:59').split(':').map(Number);
+    const due = Math.max(0, Math.min(18 * 60, eh * 60 + em - 180));
+    if (minutes < due || minutes >= due + 15) continue;
+    const done = c.category === 'habit'
+      ? (await db.from('habit_logs').select('day', { count: 'exact', head: true }).eq('user_id', r.user_id).eq('challenge_id', c.id).eq('day', date)).count
+      : (await db.from('activities').select('id', { count: 'exact', head: true }).eq('user_id', r.user_id).eq('sport', c.sport).eq('local_date', date)).count;
+    if (!done) {
+      const endTxt = `${eh % 12 || 12}:${String(em).padStart(2, '0')} ${eh < 12 ? 'am' : 'pm'}`;
+      sent += await sendAll(db, mySubs, () => ({
+        title: `Last day: ${c.title}`,
+        body: c.category === 'habit' ? `The challenge ends tonight at ${endTxt}. Log today to finish strong!` : `The challenge ends at ${endTxt} today. One more ${c.sport === 'ride' ? 'ride' : c.sport === 'run' ? 'run' : 'walk'} to finish strong!`,
+        url: `c/${c.id}`, tag: `last-${c.id}`,
+      }));
+    }
+    await db.from('challenge_members').update({ ending_notified: date }).eq('challenge_id', c.id).eq('user_id', r.user_id);
+  }
+  return sent;
+}
