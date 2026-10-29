@@ -62,7 +62,7 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<SessionValue>(() => ({
     ready, user, profile, refreshProfile,
-    needsProfile: !!user && !!profile && (!profile.full_name?.trim() || !profile.country || !profile.state),
+    needsProfile: !!user && !!profile && (!profile.full_name?.trim() || !profile.country || !profile.state || !profile.gender),
   }), [ready, user, profile, refreshProfile]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

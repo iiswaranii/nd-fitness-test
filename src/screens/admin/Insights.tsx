@@ -15,6 +15,7 @@ import { goalText, status } from '../../lib/progress';
 import type { MemberStat } from '../../lib/types';
 import { AGE_BANDS, audienceText } from '../../lib/audience';
 import { Flag } from '../../components/Flag';
+import { genderLabel } from '../../lib/auth';
 
 type Act = 'Active' | 'Quiet' | 'Inactive';
 /** Active: did something in the last 7 days. Quiet: 8–30 days ago. Inactive: over 30 days, or never. */
@@ -24,6 +25,10 @@ function activity(m: MemberStat): Act {
   return d <= 7 ? 'Active' : d <= 30 ? 'Quiet' : 'Inactive';
 }
 const ACT_COLOR: Record<Act, string> = { Active: 'var(--good)', Quiet: 'var(--warn)', Inactive: 'var(--bad)' };
+const G_KEYS = ['male', 'female', 'prefer_not', ''] as const;
+const G_COLOR: Record<string, string> = { male: 'var(--focus)', female: 'var(--brand)', prefer_not: 'var(--ink-2)', '': 'var(--line-strong)' };
+const gOf = (m: MemberStat) => (m.gender === 'male' || m.gender === 'female' || m.gender === 'prefer_not' ? m.gender : '');
+const pct = (a: number, b: number) => (b ? `${Math.round((a / b) * 100)}%` : '–');
 
 function groupCount(xs: MemberStat[], key: (m: MemberStat) => string, top = 10) {
   const by = new Map<string, number>();
@@ -71,6 +76,19 @@ export default function Insights() {
     months.push({ label: d.toLocaleDateString('en-GB', { month: 'short' }), value: ms.filter((m) => m.joined_at.startsWith(key)).length });
   }
 
+  // Gender, in detail: one row per gender with the same measures as the cards above.
+  const gRows = G_KEYS.map((g) => {
+    const xs = acts.filter(({ m }) => gOf(m) === g);
+    return {
+      g, label: genderLabel(g || null), members: xs.length,
+      taking: xs.filter(({ m }) => m.live_challenges > 0).length,
+      active: xs.filter(({ a }) => a === 'Active').length,
+      strava: xs.filter(({ m }) => m.strava_connected).length,
+    };
+  }).filter((r) => r.members > 0 || r.g === 'male' || r.g === 'female');
+  const ageBands = [...AGE_BANDS, 'Not given'];
+  const ageByGender = ageBands.map((b) => ({ band: b, cells: G_KEYS.map((g) => ms.filter((m) => (m.age_band || 'Not given') === b && gOf(m) === g).length) }))
+    .filter((r) => r.cells.some((x) => x > 0));
   const live = challenges.filter((c) => status(c) === 'active' || status(c) === 'upcoming');
   const list = acts
     .filter(({ m, a }) => (filter === 'All' || (filter === 'Not taking part' ? m.live_challenges === 0 : a === filter)))
@@ -78,12 +96,12 @@ export default function Insights() {
     .sort((x, y) => (y.m.last_active ?? '').localeCompare(x.m.last_active ?? ''));
 
   const memberRows = (): (string | number | null)[][] => [
-    ['Name', 'City', 'State', 'Country', 'Age group', 'Joined app', 'Strava', 'Challenges joined', 'Live challenges', 'Last active', 'Status'],
-    ...acts.map(({ m, a }) => [m.name, m.city, m.state, m.country, m.age_band || 'Not given', m.joined_at.slice(0, 10), m.strava_connected ? 'Linked' : 'No link yet', m.challenges, m.live_challenges, m.last_active ?? 'Never', a]),
+    ['Name', 'Gender', 'City', 'State', 'Country', 'Age group', 'Joined app', 'Strava', 'Challenges joined', 'Live challenges', 'Last active', 'Status'],
+    ...acts.map(({ m, a }) => [m.name, genderLabel(m.gender), m.city, m.state, m.country, m.age_band || 'Not given', m.joined_at.slice(0, 10), m.strava_connected ? 'Linked' : 'No link yet', m.challenges, m.live_challenges, m.last_active ?? 'Never', a]),
   ];
   const summaryRows = (): (string | number | null)[][] => [
     ['Metric', 'Value'], ['Report date', today()], ['Country filter', country], ['Members', ms.length], ['Taking part in a live challenge', taking],
-    ['Not taking part', ms.length - taking], ['Active (last 7 days)', n('Active')], ['Quiet (8–30 days)', n('Quiet')], ['Inactive (30+ days or never)', n('Inactive')], ['Added Strava activities', strava],
+    ['Not taking part', ms.length - taking], ...gRows.map((r) => [`Members: ${r.label}`, r.members]), ['Active (last 7 days)', n('Active')], ['Quiet (8–30 days)', n('Quiet')], ['Inactive (30+ days or never)', n('Inactive')], ['Added Strava activities', strava],
   ];
   const fname = (ext: string) => `member-insights${country === 'All' ? '' : '-' + country.toLowerCase().replace(/\s+/g, '-')}-${today()}.${ext}`;
   const run = async (f: () => Promise<void>, ok: string) => {
@@ -128,6 +146,41 @@ export default function Insights() {
         <section className="card stack">
           <div className="sec-h"><h2 className="h2">Age groups</h2><span className="small muted">from members’ birthdays</span></div>
           <HBars rows={[...AGE_BANDS, 'Not given'].map((b) => ({ label: b, value: ms.filter((m) => (m.age_band || 'Not given') === b).length }))} color="var(--good)" label="Members by age group" />
+        </section>
+
+        <section className="card stack">
+          <div className="sec-h"><h2 className="h2">Gender</h2><span className="small muted">{country === 'All' ? 'All countries' : country}</span></div>
+          <StatusBar parts={gRows.map((r) => ({ label: r.label, value: r.members, color: G_COLOR[r.g], hint: '' }))} />
+          <div className="tbl">
+            <table>
+              <thead><tr><th>Gender</th><th>Members</th><th>Taking part</th><th>Active · 7 days</th><th>Strava</th></tr></thead>
+              <tbody>
+                {gRows.map((r) => (
+                  <tr key={r.g || 'none'}>
+                    <td><span className="g-dot" style={{ background: G_COLOR[r.g] }} />{r.label}</td>
+                    <td className="n">{r.members}</td>
+                    <td className="n">{r.taking}<span className="small muted"> · {pct(r.taking, r.members)}</span></td>
+                    <td className="n">{r.active}<span className="small muted"> · {pct(r.active, r.members)}</span></td>
+                    <td className="n">{r.strava}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {ageByGender.length ? (
+            <>
+              <p className="grp-h" style={{ margin: '4px 0 0' }}>Age groups by gender</p>
+              <div className="tbl">
+                <table>
+                  <thead><tr><th>Age</th>{G_KEYS.map((g) => <th key={g || 'none'}>{g === 'prefer_not' ? 'Prefer not' : genderLabel(g || null)}</th>)}</tr></thead>
+                  <tbody>
+                    {ageByGender.map((r) => <tr key={r.band}><td>{r.band}</td>{r.cells.map((x, i) => <td key={i} className="n">{x || '–'}</td>)}</tr>)}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          ) : null}
+          <p className="small muted">Members choose this when they set up their profile. “Not given” = joined before it was asked; they’ll be asked next time they open the app.</p>
         </section>
 
         {country === 'All' ? (
@@ -191,6 +244,7 @@ export default function Insights() {
               { name: 'Summary', rows: summaryRows() },
               { name: 'Members', rows: memberRows() },
               { name: 'By state', rows: [['State', 'Members'], ...groupCount(ms, (m) => `${m.state ?? 'Unknown'}${m.country && m.country !== 'India' ? ', ' + m.country : ''}`, 999).map((r) => [r.label, r.value])] },
+              { name: 'Gender', rows: [['Gender', 'Members', 'Taking part', 'Active (7 days)', 'Strava linked'], ...gRows.map((r) => [r.label, r.members, r.taking, r.active, r.strava])] },
               { name: 'Age groups', rows: [['Age group', 'Members'], ...[...AGE_BANDS, 'Not given'].map((b) => [b, ms.filter((m) => (m.age_band || 'Not given') === b).length])] },
               { name: 'Challenges', rows: [['Challenge', 'Type', 'Goal', 'Open to', 'Start', 'End', 'Members', 'Status'], ...challenges.map((c) => [c.title, c.category === 'activity' ? 'Physical exercise' : 'Healthy habit', goalText(c), audienceText(c), c.start_date, c.end_date, c.member_count, status(c)])] },
             ]), 'Excel file ready')}><Icon name="download" />Excel</Button>

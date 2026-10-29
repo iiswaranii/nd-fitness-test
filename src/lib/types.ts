@@ -106,6 +106,8 @@ export type MemberStat = {
   last_active: string | null; // last day with an activity or a habit log (YYYY-MM-DD)
   /** Age group only (e.g. "30–44"), never the date of birth. */
   age_band: string;
+  /** 'male' | 'female' | 'prefer_not', or null if not given yet. */
+  gender: string | null;
 };
 
 /** Private to the member: never visible to admins or other members. */

@@ -3,9 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { Screen } from '../components/Screen';
 import { Button, ErrorText, TextField } from '../components/Form';
 import { Icon } from '../components/Icon';
-import { BodyFields, DobField, LocationFields, MobileField, mobileFrom, mobileValue, validateBody, validateDob, validateLoc, validateMobile, type Body, type Loc, type Mobile } from '../components/DetailsFields';
+import { BodyFields, DobField, GenderField, LocationFields, MobileField, mobileFrom, mobileValue, validateBody, validateDob, validateLoc, validateMobile, type Body, type Loc, type Mobile } from '../components/DetailsFields';
 import { useToast } from '../components/Toast';
-import { auth } from '../lib/auth';
+import { auth, type Gender } from '../lib/auth';
 import { data } from '../lib/data';
 import { useSession } from '../lib/session';
 import { friendlyError } from '../lib/errors';
@@ -13,7 +13,7 @@ import { validateName } from '../lib/validation';
 
 /**
  * Profile setup after the first sign-in (code or Google).
- * Required: name, country, state. Optional and private: birthday, height, weight.
+ * Required: name, gender, country, state. Optional and private: birthday, height, weight.
  */
 export default function AboutYou() {
   const nav = useNavigate();
@@ -21,6 +21,8 @@ export default function AboutYou() {
   const { user, profile, refreshProfile } = useSession();
   const [name, setName] = useState(profile?.full_name ?? user?.name ?? '');
   const [loc, setLoc] = useState<Loc>({ country: profile?.country ?? 'India', state: profile?.state ?? '', city: profile?.city ?? '' });
+  const [gender, setGender] = useState<Gender | null>(profile?.gender ?? null);
+  const [genderErr, setGenderErr] = useState(false);
   const [more, setMore] = useState(false);
   const [dob, setDob] = useState('');
   const [mobile, setMobile] = useState<Mobile | null>(null);
@@ -34,12 +36,13 @@ export default function AboutYou() {
   const save = async () => {
     const nE = validateName(name);
     setNameErr(nE);
-    const e1 = validateLoc(loc) ?? (dob ? validateDob(dob) : null) ?? validateMobile(mob) ?? validateBody(body);
+    setGenderErr(!gender);
+    const e1 = (!gender ? 'Please choose your gender.' : null) ?? validateLoc(loc) ?? (dob ? validateDob(dob) : null) ?? validateMobile(mob) ?? validateBody(body);
     setErr(e1);
     if (nE || e1) return;
     setBusy(true);
     try {
-      await auth.updateProfile(user.id, { full_name: name.trim(), country: loc.country, state: loc.state.trim(), city: loc.city.trim() || null });
+      await auth.updateProfile(user.id, { full_name: name.trim(), gender: gender ?? undefined, country: loc.country, state: loc.state.trim(), city: loc.city.trim() || null });
       if (dob || mobileValue(mob) || body.height_cm || body.weight_kg) {
         await data.saveHealth({
           dob: dob || null,
@@ -61,12 +64,13 @@ export default function AboutYou() {
         <div className="stack tight">
           <p className="eyebrow">Step 2 of 2</p>
           <h1 className="h1">Set up your profile</h1>
-          <p className="lead">Just your name and where you live. The rest is optional.</p>
+          <p className="lead">Your name, gender and where you live. The rest is optional.</p>
         </div>
 
         <section className="card stack">
           <TextField label="Full name" autoComplete="name" autoCapitalize="words" placeholder="Your name" value={name}
             onChange={(e) => { setName(e.target.value); setNameErr(null); }} error={nameErr} />
+          <GenderField value={gender} onChange={(g) => { setGender(g); setGenderErr(false); setErr(null); }} error={genderErr} />
           <LocationFields v={loc} onChange={(v) => { setLoc(v); setErr(null); }} />
         </section>
 

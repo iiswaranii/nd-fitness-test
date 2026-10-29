@@ -1,3 +1,4 @@
+import { GENDERS, type Gender } from '../lib/auth';
 import { PhoneInput, TextField } from './Form';
 import { COUNTRIES, countryOfPhone, digitsOnly, toE164, validatePhone, type Country } from '../lib/validation';
 import { COUNTRY_LIST, STATES_BY_COUNTRY } from '../lib/places';
@@ -105,5 +106,20 @@ export function MobileField({ v, onChange, error }: { v: Mobile; onChange: (v: M
   return (
     <PhoneInput label="Mobile number (optional)" country={v.country} onCountry={(c) => onChange({ ...v, country: c })}
       value={v.national} onChange={(n) => onChange({ ...v, national: n })} error={error} />
+  );
+}
+
+/* ---------- gender: required, three clear choices ---------- */
+export function GenderField({ value, onChange, error }: { value: Gender | null | undefined; onChange: (g: Gender) => void; error?: boolean }) {
+  return (
+    <div className="field">
+      <span className="label" id="gender-l">Gender</span>
+      <div className={`seg gender-seg${error ? ' err' : ''}`} role="radiogroup" aria-labelledby="gender-l">
+        {GENDERS.map((g) => (
+          <button key={g.value} type="button" role="radio" aria-checked={value === g.value} aria-selected={value === g.value} onClick={() => onChange(g.value)}>{g.label}</button>
+        ))}
+      </div>
+      <p className="hint">Only you and the admins can see this. Used for group stats.</p>
+    </div>
   );
 }

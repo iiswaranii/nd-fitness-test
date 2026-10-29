@@ -456,7 +456,7 @@ function roster(s: DemoState): MemberStat[] {
       user_id: p.id, name: p.full_name || 'Member', city: p.city, state: p.state, country: p.country,
       joined_at: (p as { created_at?: string }).created_at ?? t, age_band: ageBand(ageOn(s.health?.[p.id]?.dob)),
       strava_connected: p.strava_connected, challenges: ids.length, live_challenges: ids.filter((id) => liveIds.has(id)).length,
-      last_active: ds.length ? ds[ds.length - 1] : null,
+      last_active: ds.length ? ds[ds.length - 1] : null, gender: (p as { gender?: string | null }).gender ?? null,
     };
   });
 }

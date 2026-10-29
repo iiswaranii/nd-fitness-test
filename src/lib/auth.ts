@@ -19,6 +19,8 @@ export type Profile = {
   email: string | null;
   phone: string | null;
   password_set: boolean;
+  /** 'male' | 'female' | 'prefer_not'. Required at profile setup; only the member and admins can read it. */
+  gender?: Gender | null;
   /** Phone time zone, saved when the app opens. */
   tz?: string | null;
   /** Set by the member's first Strava activity link: only that athlete's activities are accepted after. */
@@ -29,6 +31,12 @@ export type Profile = {
   role: 'member' | 'admin';
   notify_new_challenges: boolean;
 };
+
+export type Gender = 'male' | 'female' | 'prefer_not';
+export const GENDERS: { value: Gender; label: string }[] = [
+  { value: 'male', label: 'Male' }, { value: 'female', label: 'Female' }, { value: 'prefer_not', label: 'Prefer not to say' },
+];
+export const genderLabel = (g?: string | null) => GENDERS.find((x) => x.value === g)?.label ?? 'Not given';
 
 export interface AuthApi {
   readonly demo: boolean;
@@ -46,7 +54,7 @@ export interface AuthApi {
   verifyOtp(id: Identifier, code: string, mode?: 'signup' | 'reset'): Promise<void>;
   signOut(): Promise<void>;
   getProfile(uid: string): Promise<Profile | null>;
-  updateProfile(uid: string, patch: Partial<Pick<Profile, 'full_name' | 'city' | 'state' | 'country' | 'notify_new_challenges' | 'tz'>>): Promise<void>;
+  updateProfile(uid: string, patch: Partial<Pick<Profile, 'full_name' | 'city' | 'state' | 'country' | 'notify_new_challenges' | 'tz' | 'gender'>>): Promise<void>;
 }
 
 /* ------------------------------------------------------------------ */

@@ -11,7 +11,7 @@ import { Button, ErrorText, TextField } from '../components/Form';
 import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { useToast } from '../components/Toast';
-import { auth } from '../lib/auth';
+import { auth, genderLabel, type Gender } from '../lib/auth';
 import { friendlyError } from '../lib/errors';
 import { useSession } from '../lib/session';
 import { validateName } from '../lib/validation';
@@ -20,7 +20,7 @@ import { Badges } from '../components/Badges';
 import { TrophyRack } from '../components/TrophyRack';
 import { StravaProfileLink } from '../components/StravaProfileLink';
 import { NotificationSettings } from '../components/NotificationSettings';
-import { BodyFields, DobField, LocationFields, MobileField, mobileFrom, mobileValue, validateBody, validateDob, validateLoc, validateMobile, type Body, type Loc, type Mobile } from '../components/DetailsFields';
+import { BodyFields, DobField, GenderField, LocationFields, MobileField, mobileFrom, mobileValue, validateBody, validateDob, validateLoc, validateMobile, type Body, type Loc, type Mobile } from '../components/DetailsFields';
 import { useStore } from '../lib/store';
 import { cmToFtIn } from '../lib/bmi';
 import type { Health } from '../lib/types';
@@ -30,6 +30,7 @@ export default function Profile() {
   const toast = useToast();
   const { user, profile, refreshProfile } = useSession();
   const [name, setName] = useState('');
+  const [gender, setGender] = useState<Gender | null>(null);
   const [city, setCity] = useState('');
   const [nameErr, setNameErr] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -59,6 +60,7 @@ export default function Profile() {
     setDob(health?.dob ?? '');
     setMob(mobileFrom(health?.mobile, profile?.country));
     setBody({ height_cm: health?.height_cm ? String(health.height_cm) : '', weight_kg: health?.weight_kg ? String(health.weight_kg) : '' });
+    setGender(profile?.gender ?? null);
     setEditing('details');
   };
   const where = [profile?.city, profile?.state, profile?.country].filter(Boolean).join(', ');
@@ -82,6 +84,7 @@ export default function Profile() {
           <div className="sec-h"><h2 className="h2">Your details</h2><button className="link-btn" onClick={openEdit}>Edit</button></div>
           <div className="kv">
             <div className="wide"><div className="k">Name</div><div className="v">{profile?.full_name || '—'}</div></div>
+            <div className="wide"><div className="k">Gender</div><div className="v">{genderLabel(profile?.gender)}</div></div>
             <div className="wide"><div className="k">Lives in</div><div className="v">{where || 'Add your location'}</div></div>
           </div>
           <button className="private-row" onClick={openEdit}>
@@ -192,11 +195,11 @@ export default function Profile() {
         <form className="stack" onSubmit={async (e) => {
           e.preventDefault();
           const nE = validateName(name); setNameErr(nE);
-          const oE = validateLoc(loc) ?? (dob ? validateDob(dob) : null) ?? validateMobile(mob) ?? validateBody(body); setErr(oE);
+          const oE = (!gender ? 'Please choose your gender.' : null) ?? validateLoc(loc) ?? (dob ? validateDob(dob) : null) ?? validateMobile(mob) ?? validateBody(body); setErr(oE);
           if (nE || oE) return;
           setSaving(true);
           try {
-            await auth.updateProfile(user.id, { full_name: name.trim(), country: loc.country, state: loc.state.trim(), city: loc.city.trim() || null });
+            await auth.updateProfile(user.id, { full_name: name.trim(), gender: gender ?? undefined, country: loc.country, state: loc.state.trim(), city: loc.city.trim() || null });
             await data.saveHealth({ dob: dob || null, mobile: mobileValue(mob), height_cm: body.height_cm ? Math.round(parseFloat(body.height_cm)) : null, weight_kg: body.weight_kg ? +parseFloat(body.weight_kg).toFixed(1) : null });
             setHealth(await data.getHealth());
             await refreshProfile(); await reload(); setEditing(null); toast('Details saved');
@@ -204,6 +207,7 @@ export default function Profile() {
         }}>
           <h2 className="h1" style={{ fontSize: 24 }}>Your details</h2>
           <TextField label="Full name" autoComplete="name" autoCapitalize="words" value={name} onChange={(e) => { setName(e.target.value); setNameErr(null); }} error={nameErr} />
+          <GenderField value={gender} onChange={(g) => { setGender(g); setErr(null); }} error={!gender && !!err} />
           <LocationFields v={loc} onChange={setLoc} />
           <div className="card stack" style={{ background: 'var(--surface-2)', boxShadow: 'none' }}>
             <div className="row" style={{ gap: 10 }}><Icon name="shield" /><span className="strong">Private details</span></div>
