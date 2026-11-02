@@ -46,7 +46,11 @@ export function ResultsDeck() {
   const [deck, setDeck] = useState<Result[] | null>(null);
   const [i, setI] = useState(0);
   const [leaving, setLeaving] = useState(false);
+  // The challenge the member opened from a card ("See details"). The deck waits, then comes back.
+  const [away, setAway] = useState<string | null>(null);
   const started = useRef(false);
+  const opened = useRef(false);
+  const arrived = useRef(false); // reached the challenge page (so a later path change means "came back")
 
   // Build the deck once per app open, after challenges have loaded.
   useEffect(() => {
@@ -72,14 +76,32 @@ export function ResultsDeck() {
     });
   }, [user, setup, loading, challenges, allActivities, logs]);
 
-  // Confetti for each good result as it comes to the front.
+  // Celebration: a big full-screen burst when the deck first opens, then one for each good result.
   const cur = deck?.[i];
+  const hidden = !!away && loc.pathname === `/c/${away}`;
   useEffect(() => {
-    if (!cur) return;
-    if (cur.done || (cur.rank !== null && cur.rank <= 3)) { const t = setTimeout(() => celebrate(true), 350); return () => clearTimeout(t); }
-  }, [cur]);
+    if (!cur || hidden) return;
+    const good = cur.done || (cur.rank !== null && cur.rank <= 3);
+    if (!opened.current) {
+      opened.current = true;
+      const a = setTimeout(() => celebrate(true), 250), b = setTimeout(() => celebrate(true), 900);
+      return () => { clearTimeout(a); clearTimeout(b); };
+    }
+    if (good) { const t = setTimeout(() => celebrate(true), 350); return () => clearTimeout(t); }
+  }, [cur, hidden]);
 
-  if (!deck || !user || setup) return null;
+  // Back from the challenge page: carry on with the cards not seen yet.
+  useEffect(() => {
+    if (!away || !deck) return;
+    if (loc.pathname === `/c/${away}`) { arrived.current = true; return; }
+    if (!arrived.current) return; // still on the way there
+    arrived.current = false;
+    setAway(null);
+    if (i + 1 >= deck.length) setDeck(null);
+    else setI(i + 1);
+  }, [away, deck, i, loc.pathname]);
+
+  if (!deck || !user || setup || hidden) return null;
 
   const next = () => {
     const r = deck[i];
@@ -87,12 +109,13 @@ export function ResultsDeck() {
     if (i + 1 >= deck.length) { setLeaving(true); setTimeout(() => setDeck(null), 280); }
     else setI(i + 1);
   };
-  const closeAll = () => { deck.forEach((r) => markSeen(user.id, r.c.id)); setLeaving(true); setTimeout(() => setDeck(null), 280); };
-  const open = (r: Result) => { closeAll(); nav(`/c/${r.c.id}`); };
+  // ✕ closes for now; cards not seen yet come back next time the app opens.
+  const closeForNow = () => { const r = deck[i]; if (r) markSeen(user.id, r.c.id); setLeaving(true); setTimeout(() => setDeck(null), 280); };
+  const open = (r: Result) => { markSeen(user.id, r.c.id); setAway(r.c.id); nav(`/c/${r.c.id}`); };
 
   return (
     <div className={`rdeck${leaving ? ' out' : ''}`} role="dialog" aria-modal="true" aria-label="Your challenge results">
-      <button className="rdeck-x" onClick={closeAll} aria-label="Close all results"><Icon name="x" /></button>
+      <button className="rdeck-x" onClick={closeForNow} aria-label={deck.length - i > 1 ? 'Close (the other results show next time)' : 'Close'}><Icon name="x" /></button>
       <div className="rdeck-stack">
         {deck.slice(i, i + 3).map((r, k) => (
           <ResultCard key={r.c.id} r={r} depth={k} top={k === 0} last={i + k === deck.length - 1} onGone={next} onOpen={() => open(r)} />
@@ -136,7 +159,7 @@ function ResultCard({ r, depth, top, last, onGone, onOpen }: { r: Result; depth:
 
   const x = fly ? fly.x : pos.x, y = fly ? fly.y : pos.y;
   const tf = top
-    ? `translate3d(${x}px, ${y + (enter ? 60 : 0)}px, 0) rotateZ(${x * 0.06}deg) rotateY(${x * 0.03}deg) rotateX(${-y * 0.03}deg)`
+    ? `translate3d(${x}px, ${y + (enter ? 80 : 0)}px, 0) scale(${enter ? 0.7 : 1}) rotateZ(${x * 0.06}deg) rotateY(${x * 0.03}deg) rotateX(${-y * 0.03 + (enter ? 18 : 0)}deg)`
     : `translate3d(0, ${depth * 16}px, ${-depth * 40}px) scale(${1 - depth * 0.05})`;
   const dragging = !!drag.current;
 
@@ -147,7 +170,7 @@ function ResultCard({ r, depth, top, last, onGone, onOpen }: { r: Result; depth:
   return (
     <div ref={el} className={`rcard${top ? ' top' : ''}`} style={{
       ['--c' as string]: look.color, transform: tf, opacity: fly ? 0 : enter && top ? 0 : 1 - depth * 0.25,
-      transition: dragging ? 'none' : fly ? 'transform .42s cubic-bezier(.3,.6,.4,1), opacity .42s' : 'transform .38s cubic-bezier(.2,.9,.3,1.15), opacity .3s',
+      transition: dragging ? 'none' : fly ? 'transform .42s cubic-bezier(.3,.6,.4,1), opacity .42s' : 'transform .55s cubic-bezier(.2,1.3,.35,1), opacity .3s',
       zIndex: 10 - depth,
     }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} aria-hidden={!top}>
       <div className="rcard-band">
