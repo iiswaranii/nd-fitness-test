@@ -760,3 +760,20 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .rcard-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; align-self: stretch; margin-top: 10px; }
 .rcard-actions .btn { min-height: 46px; }
 @media (max-height: 640px) { .rcard-hero { min-height: 70px; } .rcard-hero .trophy { width: 72px; height: 72px; } .rcard-title { font-size: 19px; } }
+
+/* ---------- finished challenge: short summary ---------- */
+.fsum { display: flex; flex-direction: column; gap: 12px; }
+.fsum-top { display: flex; align-items: center; gap: 14px; }
+.fsum-rank { width: 64px; height: 64px; border-radius: 18px; display: grid; place-items: center; font-family: var(--font-d); font-size: 26px; font-weight: 700; color: var(--c); background: color-mix(in srgb, var(--c) 14%, var(--surface)); flex: none; }
+.fsum-badge { width: 64px; height: 64px; border-radius: 50%; display: grid; place-items: center; border: 5px solid color-mix(in srgb, var(--c) 30%, transparent); color: var(--c); flex: none; }
+.fsum-badge.ok { background: var(--good); border-color: color-mix(in srgb, var(--good) 35%, transparent); color: #FFFFFF; }
+.fsum-badge .ic { width: 30px; height: 30px; stroke-width: 2.6; }
+.fsum-badge b { font-family: var(--font-d); font-size: 18px; }
+.fsum-head { font-size: 19px; font-weight: 800; letter-spacing: -.01em; }
+.fsum-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; text-align: center; }
+.fsum-stats div { background: var(--surface-2); border-radius: 14px; padding: 10px 4px; display: flex; flex-direction: column; }
+.fsum-stats b { font-family: var(--font-d); font-size: 19px; font-variant-numeric: tabular-nums; }
+.fsum-stats span { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+.fsum-members { display: flex; align-items: center; gap: 12px; padding: 14px; }
+.fsum-members b { font-family: var(--font-d); font-size: 18px; }
+.month-h { margin: 6px 2px -4px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }

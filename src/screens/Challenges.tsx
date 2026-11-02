@@ -12,6 +12,17 @@ import type { Challenge } from '../lib/types';
 type Tab = 'joined' | 'open' | 'finished';
 type Kind = 'all' | 'activity' | 'habit';
 
+/** Finished challenges grouped by the month they ended, newest first: [["November 2026", [...]], ...] */
+function byMonth(xs: Challenge[]): [string, Challenge[]][] {
+  const out = new Map<string, Challenge[]>();
+  for (const c of xs) {
+    const [y, m] = c.end_date.split('-').map(Number);
+    const key = new Date(y, m - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    out.set(key, [...(out.get(key) ?? []), c]);
+  }
+  return [...out.entries()];
+}
+
 export default function Challenges() {
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
@@ -58,7 +69,12 @@ export default function Challenges() {
             <p className="small muted">You completed {completed} of the {finishedJoined.length} finished {finishedJoined.length === 1 ? 'challenge' : 'challenges'} you joined.</p>
           ) : null}
           {loading && !challenges.length ? <p className="muted center-text">Loading…</p> : list.length ? (
-            list.map((c) => (tab === 'open' ? <OpenCard key={c.id} c={c} onJoin={setJoinC} /> : <ChallengeCard key={c.id} c={c} />))
+            tab === 'finished' ? byMonth(list).map(([m, xs]) => (
+              <section key={m} className="stack tight" aria-label={m}>
+                <h2 className="month-h">{m}</h2>
+                {xs.map((c) => <ChallengeCard key={c.id} c={c} />)}
+              </section>
+            )) : list.map((c) => (tab === 'open' ? <OpenCard key={c.id} c={c} onJoin={setJoinC} /> : <ChallengeCard key={c.id} c={c} />))
           ) : (
             <div className="card empty">
               <Icon name="trophy" />

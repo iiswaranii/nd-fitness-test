@@ -1,3 +1,4 @@
+import { FinishedSummary } from '../components/FinishedSummary';
 import { fmtMoment, joinByText, regOpensText, fmtWindow } from '../lib/dates';
 import { ReminderPicker, fmtReminder } from '../components/TimeWheel';
 import { useCallback, useEffect, useState } from 'react';
@@ -71,7 +72,9 @@ export default function ChallengeDetail() {
           {c.description ? <p className="lead">{c.description}</p> : null}
         </div>
 
-        {p ? (
+        {st === 'finished' ? <FinishedSummary c={c} p={p} /> : null}
+
+        {st !== 'finished' && p ? (
           <div className="card hero">
             <Rings rings={[{ pct: p.pct, color: look.color }]} size={124} label={`${Math.round(p.pct)}% complete`}>
               <b style={{ fontSize: 24 }}>{Math.floor(p.pct)}%</b><span>complete</span>
@@ -96,7 +99,7 @@ export default function ChallengeDetail() {
           <Button className="tint" onClick={() => setAddLink(true)}><Icon name="link" />Add a {c.sport === 'run' ? 'run' : c.sport === 'ride' ? 'ride' : 'walk'} from Strava</Button>
         ) : null}
 
-        {p && c.category === 'habit' && h ? (
+        {st !== 'finished' && p && c.category === 'habit' && h ? (
           <section className="sec">
             <div className="sec-h"><h2 className="h2">Your days</h2><span className="small muted">{p.metDays.length} counted</span></div>
             <div className="days">
@@ -149,9 +152,9 @@ export default function ChallengeDetail() {
           </section>
         ) : null}
 
-        {st !== 'upcoming' && st !== 'cancelled' ? <Community c={c} refreshKey={tick} /> : null}
+        {st !== 'upcoming' && st !== 'cancelled' && st !== 'finished' ? <Community c={c} refreshKey={tick} /> : null}
 
-        <div className="kv">
+        {st !== 'finished' ? <div className="kv">
           <div className="wide"><div className="k">Goal</div><div className="v">{goalText(c)}</div></div>
           {h ? <div className="wide"><div className="k">A day counts when</div><div className="v">{habitGoalText(h, target)}</div></div> : null}
           <div><div className="k">Dates · your time</div><div className="v">{fmtWindow(c)}</div></div>
@@ -168,9 +171,9 @@ export default function ChallengeDetail() {
                 : 'You log it yourself in the app each day. Days before you joined or after the end date don’t count.'}
             </div>
           </div>
-        </div>
+        </div> : null}
 
-        {p && c.category === 'activity' && p.counted.length ? (
+        {st !== 'finished' && p && c.category === 'activity' && p.counted.length ? (
           <section className="sec">
             <div className="sec-h"><h2 className="h2">Counted activities</h2><span className="small muted">{p.counted.length} · {fmtKm(p.km)} km</span></div>
             <div className="list">
