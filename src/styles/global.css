@@ -777,3 +777,11 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .fsum-members { display: flex; align-items: center; gap: 12px; padding: 14px; }
 .fsum-members b { font-family: var(--font-d); font-size: 18px; }
 .month-h { margin: 6px 2px -4px; font-size: 13px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.cheer-glow { position: absolute; width: 220px; height: 220px; margin: -110px 0 0 -110px; border-radius: 50%;
+  background: radial-gradient(circle, rgb(255 176 32 / .45), rgb(255 107 139 / .18) 45%, transparent 70%); opacity: 0;
+  animation: cheer-glow 1.8s ease-out forwards; }
+@keyframes cheer-glow { 0% { opacity: 0; transform: scale(.4); } 30% { opacity: 1; } 100% { opacity: 0; transform: scale(1.9); } }
+.rcard-badge.go { background: linear-gradient(135deg, #FFB020, #FF6B8B); border-color: color-mix(in srgb, #FF8A3D 30%, transparent); color: #FFFFFF; }
+.rcard-badge.go b { font-size: 22px; }
+.rcard-badge.go span { display: block; font-size: 10.5px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; margin-top: -2px; }
+.rcard-tip { font-size: 13px; font-weight: 700; color: #E0782A; background: color-mix(in srgb, #FFB020 14%, transparent); border-radius: 12px; padding: 7px 10px; align-self: stretch; }

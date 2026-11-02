@@ -116,3 +116,41 @@ export function commiserate() {
     window.setTimeout(() => root.remove(), longest + 150);
   }));
 }
+
+/* ---------- encourage(): for a challenge that wasn't completed — uplifting, never sad ---------- */
+const WARM = ['#FF8A3D', '#FFB020', '#FF6B8B', '#F5B92E', '#FF5C8D', '#FFC857'];
+const UP = '<path d="M12 3l8 8.5h-5V21H9v-9.5H4z"/>';
+const FLAME = '<path d="M12 2c1 4 5 6 5 11a5 5 0 0 1-10 0c0-2.4 1.2-4 2.6-5.3-.1 1.6.5 2.9 1.6 3.6C11 8.6 10.6 5.2 12 2z"/>';
+
+/**
+ * A gentle "keep going" rise: arrows, flames, hearts and sparkles float UP from the bottom of the
+ * whole screen in warm sunrise colours, swaying a little, with a soft glow pulse in the centre.
+ */
+export function encourage() {
+  if (!canAnimate()) return;
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    const W = window.innerWidth, H = window.innerHeight;
+    const root = layer();
+    const glow = document.createElement('i');
+    glow.className = 'cheer-glow';
+    glow.style.left = `${W / 2}px`; glow.style.top = `${H * 0.45}px`;
+    root.appendChild(glow);
+    const shapes = [UP, FLAME, HEART, SPARK, UP, STAR];
+    const n = reduced() ? 18 : 34;
+    let longest = 0;
+    for (let i = 0; i < n; i++) {
+      const sh = shapes[i % shapes.length];
+      const el = piece(root, sh, WARM[i % WARM.length], rnd(14, sh === UP ? 26 : 22), rnd(0.04, 0.96) * W, H + 20);
+      const rise = H * rnd(0.55, 1.05), sway = rnd(14, 40) * (Math.random() < 0.5 ? -1 : 1);
+      const dur = rnd(2200, 3400), delay = rnd(0, 700);
+      longest = Math.max(longest, dur + delay);
+      el.animate([
+        { transform: 'translate(0px, 0px) scale(.5)', opacity: 0 },
+        { transform: `translate(${sway}px, ${-rise * 0.35}px) scale(1)`, opacity: 0.95, offset: 0.25 },
+        { transform: `translate(${-sway}px, ${-rise * 0.7}px) scale(1)`, opacity: 0.85, offset: 0.65 },
+        { transform: `translate(${sway / 2}px, ${-rise}px) scale(.9)`, opacity: 0 },
+      ], { duration: dur, delay, easing: 'cubic-bezier(.25,.6,.35,1)', fill: 'both' });
+    }
+    window.setTimeout(() => root.remove(), longest + 150);
+  }));
+}

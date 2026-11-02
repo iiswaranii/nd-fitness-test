@@ -55,11 +55,11 @@ export function FinishedSummary({ c, p }: { c: Challenge; p: Progress | null }) 
               <p className="fsum-head">
                 {waiting ? 'Final results coming soon'
                   : board && info?.rank ? `${place(info.rank)} of ${members}`
-                  : p.done ? 'Challenge completed' : 'Challenge finished'}
+                  : p.done ? 'Challenge completed' : 'You took part!'}
               </p>
               <p className="small muted">
                 {waiting ? `Final at ${fmtMoment(new Date(info!.at).toISOString())}`
-                  : p.done ? 'You reached the goal. Well done!' : `You reached ${Math.floor(p.pct)}% of the goal.`}
+                  : p.done ? 'You reached the goal. Well done!' : `Great effort: ${Math.floor(p.pct)}% of the goal. Keep going!`}
               </p>
             </div>
           </div>

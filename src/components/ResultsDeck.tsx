@@ -10,7 +10,7 @@ import { fmtValue, progress, status, unitOf } from '../lib/progress';
 import { resultsOf } from '../lib/results';
 import { lookOf } from '../lib/look';
 import { addDays, fmtWindow, today } from '../lib/dates';
-import { celebrate } from '../lib/celebrate';
+import { celebrate, encourage } from '../lib/celebrate';
 import type { Challenge } from '../lib/types';
 
 /** One finished challenge, ready to show on a card. */
@@ -25,6 +25,21 @@ type Result = {
 };
 
 const place = (n: number) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+/** Kind words for a challenge that wasn't completed, based on how far they got. */
+function encouragement(r: Result): string {
+  const p = Math.floor(r.pct);
+  if (p >= 75) return `So close: ${p}% of the goal! You’re ready for the next one.`;
+  if (p >= 40) return `You got ${p}% of the way. That’s real progress.`;
+  if (r.value > 0) return `Every step counts, and you took ${r.c.category === 'habit' ? `${Math.round(r.value)} good days` : `${fmtValue(r.c, r.value)} ${unitOf(r.c)}`} of them.`;
+  return 'Taking part is the first step. The next challenge is yours.';
+}
+/** One small, doable idea for next time. */
+function nextStep(r: Result): string {
+  if (r.c.category === 'habit') return 'Tip: set a daily reminder so you never miss a day.';
+  if (r.activeDays <= 2) return 'Tip: a short walk on more days adds up fast.';
+  return 'Tip: set a daily target to keep a steady pace.';
+}
+
 const TIER: Record<number, Tier> = { 1: 'gold', 2: 'silver', 3: 'bronze' };
 
 const seenKey = (uid: string) => `ndf-results-seen-${uid}`;
@@ -82,12 +97,15 @@ export function ResultsDeck() {
   useEffect(() => {
     if (!cur || hidden) return;
     const good = cur.done || (cur.rank !== null && cur.rank <= 3);
+    // Good result → confetti. Not completed → an uplifting "keep going" rise (never sad).
     if (!opened.current) {
       opened.current = true;
-      const a = setTimeout(() => celebrate(true), 250), b = setTimeout(() => celebrate(true), 900);
+      const a = setTimeout(() => (good ? celebrate(true) : encourage()), 250);
+      const b = setTimeout(() => (good ? celebrate(true) : undefined), 900);
       return () => { clearTimeout(a); clearTimeout(b); };
     }
-    if (good) { const t = setTimeout(() => celebrate(true), 350); return () => clearTimeout(t); }
+    const t = setTimeout(() => (good ? celebrate(true) : encourage()), 350);
+    return () => clearTimeout(t);
   }, [cur, hidden]);
 
   // Back from the challenge page: carry on with the cards not seen yet.
@@ -175,7 +193,7 @@ function ResultCard({ r, depth, top, last, onGone, onOpen }: { r: Result; depth:
     }} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} aria-hidden={!top}>
       <div className="rcard-band">
         <span className="rcard-ic"><Icon name={look.icon} /></span>
-        <span className="rcard-eyebrow">{completed ? 'Challenge complete' : 'Challenge finished'}</span>
+        <span className="rcard-eyebrow">{completed ? 'Challenge complete' : podium ? 'On the podium' : 'Great effort'}</span>
       </div>
       <h2 className="rcard-title">{r.c.title}</h2>
       <p className="rcard-dates">{fmtWindow(r.c)}</p>
@@ -186,16 +204,18 @@ function ResultCard({ r, depth, top, last, onGone, onOpen }: { r: Result; depth:
         ) : r.rank !== null ? (
           <div className="rcard-rank"><b>#{r.rank}</b><span>of {r.of}</span></div>
         ) : (
-          <div className={`rcard-badge${completed ? ' ok' : ''}`}>{completed ? <Icon name="check" /> : <b>{Math.floor(r.pct)}%</b>}</div>
+          <div className={`rcard-badge${completed ? ' ok' : ' go'}`}>{completed ? <Icon name="check" /> : <div><b>{Math.floor(r.pct)}%</b><span>done</span></div>}</div>
         )}
       </div>
 
       <p className="rcard-head">
-        {podium ? `You finished ${place(r.rank!)} of ${r.of}!` : completed ? 'Yes! You completed the challenge.' : r.rank !== null ? `You finished ${place(r.rank)} of ${r.of}.` : 'Well done for taking part.'}
+        {podium ? `You finished ${place(r.rank!)} of ${r.of}!` : completed ? 'Yes! You completed the challenge.' : r.rank !== null ? `You finished ${place(r.rank)} of ${r.of}. Nice work!` : 'You showed up. That’s a win!'}
       </p>
       <p className="rcard-sub">
-        {completed ? (r.rank !== null && !podium ? 'You reached the goal. Great effort!' : 'You reached the goal. Well done!') : `You reached ${Math.floor(r.pct)}% of the goal. Every step counts.`}
+        {completed ? (r.rank !== null && !podium ? 'You reached the goal. Great effort!' : 'You reached the goal. Well done!') : encouragement(r)}
       </p>
+
+      {!completed ? <p className="rcard-tip">{nextStep(r)}</p> : null}
 
       <div className="rcard-stats">
         <div><b>{fmtValue(r.c, r.value)}</b><span>{r.c.category === 'habit' ? 'days done' : unit}</span></div>
