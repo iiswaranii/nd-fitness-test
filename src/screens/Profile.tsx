@@ -94,6 +94,12 @@ export default function Profile() {
           </button>
         </section>
 
+        <button className="guide-card stats-card" onClick={() => nav('/stats')}>
+          <span className="gi"><Icon name="pulse" /></span>
+          <span className="grow"><span className="strong" style={{ display: 'block' }}>Your stats</span><span className="small muted">Weekly and monthly rings, distance and streaks</span></span>
+          <Icon name="chev" />
+        </button>
+
         <TrophyRack />
         <Badges />
 

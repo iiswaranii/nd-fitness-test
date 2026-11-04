@@ -40,7 +40,7 @@ export default function Activity() {
     <Page>
       <PullToRefresh onRefresh={refresh}>
         <div className="stack">
-          <div className="page-head"><div><p className="eyebrow">From Strava</p><h1 className="h1">Activity</h1></div><RefreshButton onRefresh={refresh} /></div>
+          <div className="page-head"><div><p className="eyebrow">From Strava</p><h1 className="h1">Activity</h1></div><div className="head-actions"><button className="chip" onClick={() => nav('/stats')} aria-label="Your stats"><Icon name="pulse" />Stats</button><RefreshButton onRefresh={refresh} /></div></div>
 
           <Button variant="strava" onClick={() => setLink(true)}><Icon name="link" />Add a Strava activity</Button>
           {profile?.strava_connected && profile.strava_athlete_name ? <p className="small muted" style={{ marginTop: -4, textAlign: 'center' }}>Linked to {profile.strava_athlete_name} on Strava</p> : null}

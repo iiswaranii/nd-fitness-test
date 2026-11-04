@@ -1,3 +1,4 @@
+import Stats from './screens/Stats';
 import { ResultsDeck } from './components/ResultsDeck';
 import { TrophiesPage, BadgesPage } from './screens/Awards';
 import Guide from './screens/Guide';
@@ -75,6 +76,7 @@ function MemberRoutes() {
         <Route path="/trophies" element={<TrophiesPage />} />
         <Route path="/badges" element={<BadgesPage />} />
         <Route path="/guide" element={<Guide />} />
+        <Route path="/stats" element={<Stats />} />
         <Route path="/admin" element={<AdminOnly><AdminHome /></AdminOnly>} />
         <Route path="/admin/new" element={<AdminOnly><CreateChallenge /></AdminOnly>} />
         <Route path="/admin/c/:id" element={<AdminOnly><AdminChallenge /></AdminOnly>} />
