@@ -1,3 +1,5 @@
+import { MemoryRouter, UNSAFE_LocationContext } from 'react-router-dom';
+import { PaneContext, readRightPath, saveRightPath, useDuo } from './lib/pane';
 import Stats from './screens/Stats';
 import { ResultsDeck } from './components/ResultsDeck';
 import { TrophiesPage, BadgesPage } from './screens/Awards';
@@ -6,7 +8,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import AboutYou from './screens/AboutYou';
 import TestInbox from './screens/admin/TestInbox';
 import Insights from './screens/admin/Insights';
-import type { ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import { useSession } from './lib/session';
 import { StoreProvider, useStore } from './lib/store';
 import Welcome from './screens/Welcome';
@@ -57,15 +59,48 @@ function Guest({ children }: { children: ReactNode }) {
 function MemberRoutes() {
   const { needsProfile, profile } = useSession();
   const loc = useLocation();
+  const duo = useDuo() && !!profile?.password_set && !needsProfile;
   const resetting = (() => { try { return sessionStorage.getItem(RESET_FLAG) === '1'; } catch { return false; } })();
   // New members: 1. email code (done) → 2. create a password → 3. name and location.
   if (profile && (!profile.password_set || resetting) && loc.pathname !== '/set-password') return <Navigate to="/set-password" replace />;
   if (profile?.password_set && !resetting && needsProfile && loc.pathname !== '/about') return <Navigate to="/about" replace />;
   return (
     <StoreProvider>
+      {duo ? (
+        <div className="duo">
+          <PaneContext.Provider value="left"><div className="pane" data-scroller>{memberRoutes(true)}</div></PaneContext.Provider>
+          <div className="duo-gap" aria-hidden="true" />
+          <PaneContext.Provider value="right">
+            <div className="pane" data-scroller>
+              {/* A second, independent navigator for the right-hand pane. */}
+              <UNSAFE_LocationContext.Provider value={null as never}>
+                <MemoryRouter initialEntries={[readRightPath(loc.pathname)]}>
+                  <RightPaneMemory />
+                  {memberRoutes(false)}
+                </MemoryRouter>
+              </UNSAFE_LocationContext.Provider>
+            </div>
+          </PaneContext.Provider>
+        </div>
+      ) : memberRoutes(true)}
+      <ResultsDeck />
+    </StoreProvider>
+  );
+}
+
+/** Remembers which tab the right pane shows, so it comes back after a refresh. */
+function RightPaneMemory() {
+  const l = useLocation();
+  useEffect(() => { saveRightPath(l.pathname + l.search); }, [l]);
+  return null;
+}
+
+/** All member pages. The setup pages (password, profile) only live in the main pane. */
+function memberRoutes(main: boolean) {
+  return (
       <Routes>
-        <Route path="/about" element={<AboutYou />} />
-        <Route path="/set-password" element={<SetPassword />} />
+        {main ? <Route path="/about" element={<AboutYou />} /> : null}
+        {main ? <Route path="/set-password" element={<SetPassword />} /> : null}
         <Route path="/admin/insights" element={<AdminOnly><Insights /></AdminOnly>} />
         <Route path="/admin/inbox" element={<AdminOnly><TestInbox /></AdminOnly>} />
         <Route path="/" element={<Today />} />
@@ -82,8 +117,6 @@ function MemberRoutes() {
         <Route path="/admin/c/:id" element={<AdminOnly><AdminChallenge /></AdminOnly>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <ResultsDeck />
-    </StoreProvider>
   );
 }
 
