@@ -585,17 +585,70 @@ select.input { padding-right: 36px; background-image: linear-gradient(45deg, tra
   .head-actions .refresh-btn { display: none; } /* pull-to-refresh still works */
 }
 
-/* Unfolded foldables and tablets: keep a phone-width column, centred, tab bar items too. */
+/* ===================== Bigger screens =====================
+   ≥600px  unfolded square foldables (Galaxy Z Fold, Pixel Fold, OnePlus Open, Find N, Vivo X Fold…),
+           small tablets, big phones sideways: wider column, two-up cards, 4-up stats.
+   ≥900px  landscape tablets and wide foldables: navigation moves to a side rail; three-up cards.
+   Two screen segments (hinge across the middle): content stays in one segment, never under the hinge. */
+.cc-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; align-items: start; }
+
 @media (min-width: 600px) {
-  .tabbar { padding-left: max(8px, calc((100% - 560px) / 2)); padding-right: max(8px, calc((100% - 560px) / 2)); }
+  :root { --gutter: 24px; }
+  .page { max-width: 820px; gap: 22px; }
+  .screen { max-width: 720px; }
+  .tabbar { padding-left: max(8px, calc((100% - 640px) / 2)); padding-right: max(8px, calc((100% - 640px) / 2)); }
   .toast { max-width: 520px; }
+  .cc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  .car > * { flex-basis: calc(50% - 5px); }
+  .car.one > * { flex-basis: min(100%, 560px); }
+  .kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .stat3 .v { font-size: 24px; }
+  .badge-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .badge-grid, .badge-grid { gap: 16px 10px; }
+  .h1 { font-size: 34px; }
+  .sheet { max-width: 600px; border-radius: 28px 28px 0 0; }
+  .rdeck-stack { width: min(380px, 100%); height: min(540px, calc(100dvh - var(--sat) - var(--sab) - 150px)); }
+  .st-bars { height: 200px; }
+  .gshot { width: 280px; }
+  .tab { flex-direction: row; gap: 6px; justify-content: center; min-height: 52px; font-size: 12.5px; }
+  .tab-badge { left: calc(50% + 4px); }
 }
 
-/* Foldables with a visible hinge (two side-by-side screen segments): use the left segment only. */
+/* Landscape tablets / wide unfolded foldables: side navigation rail (like Gmail, Google Fit on tablets). */
+@media (min-width: 900px) and (orientation: landscape) {
+  .app { flex-direction: row; }
+  .tabbar {
+    order: -1; flex: none; width: 104px; display: flex; flex-direction: column; justify-content: center; gap: 6px;
+    border-top: 0; border-right: 1px solid var(--line);
+    padding: calc(var(--sat) + 12px) 8px calc(var(--sab) + 12px) max(8px, var(--sal));
+  }
+  .tab { flex-direction: column; gap: 4px; min-height: 68px; font-size: 12px; }
+  .tab-pill { width: 60px; height: 34px; }
+  .tab-badge { left: calc(50% + 8px); top: 6px; }
+  .app-scroll { flex: 1 1 auto; }
+  .page { max-width: 1040px; padding-left: 32px; padding-right: max(32px, var(--sar)); }
+  .cc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .car > * { flex-basis: calc(33.333% - 7px); }
+  .screen { max-width: 820px; }
+}
+@media (min-width: 1200px) and (orientation: landscape) {
+  .page { max-width: 1180px; }
+}
+
+/* Foldables with a visible hinge across the middle (two side-by-side segments, e.g. half-opened like a book):
+   keep the app in the left segment, never under the fold. */
 @media (horizontal-viewport-segments: 2) {
+  .app { flex-direction: column; right: calc(100vw - env(viewport-segment-right 0 0, 100vw)); }
+  .tabbar { order: 0; width: auto; flex-direction: row; display: grid; border-right: 0; border-top: 1px solid var(--line); padding: 6px 8px calc(var(--sab) + 6px); }
+  .tab { flex-direction: column; min-height: 52px; }
   .page, .screen { max-width: env(viewport-segment-width 0 0, 560px); margin-left: 0; }
-  .tabbar { padding-right: calc(100% - env(viewport-segment-width 0 0, 100%)); padding-left: 8px; }
-  .sheet { max-width: env(viewport-segment-width 0 0, 560px); margin-left: 0; }
+  .cc-grid { grid-template-columns: minmax(0, 1fr); }
+  .car > * { flex-basis: calc(100% - 26px); }
+  .sheet { max-width: env(viewport-segment-width 0 0, 560px); margin-left: 0; right: auto; width: env(viewport-segment-width 0 0, 100%); }
+}
+/* Flip phones half-folded (top and bottom segments, "flex mode"): keep the app on the top half. */
+@media (vertical-viewport-segments: 2) {
+  .app { bottom: calc(100vh - env(viewport-segment-bottom 0 0, 100vh)); }
 }
 
 /* Phones turned sideways: same column, less vertical padding so content fits. */
@@ -816,3 +869,18 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 input, textarea, select, [contenteditable="true"], .selectable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
 img, svg { -webkit-user-drag: none; user-drag: none; }
+
+/* Progress cards side by side (foldables / tablets): ring on top, details below, so nothing is cut. */
+@media (min-width: 600px) {
+  .car:not(.one) .hero { flex-direction: column; align-items: stretch; gap: 14px; }
+  .car:not(.one) .hero .ringwrap { margin: 0 auto; }
+  .car:not(.one) .hero .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+}
+@media (min-width: 600px) {
+  .car > * { min-width: 0; max-width: calc(50% - 5px); }
+  .car.one > * { max-width: min(100%, 560px); }
+  .car:not(.one) .hero .legend > div { min-width: 0; }
+  .car:not(.one) .hero .lg-t span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+}
+@media (min-width: 900px) and (orientation: landscape) { .car:not(.one) > * { max-width: calc(33.333% - 7px); } }
+@media (horizontal-viewport-segments: 2) { .car:not(.one) > * { max-width: calc(100% - 26px); } }

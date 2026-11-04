@@ -72,9 +72,9 @@ export default function Challenges() {
             tab === 'finished' ? byMonth(list).map(([m, xs]) => (
               <section key={m} className="stack tight" aria-label={m}>
                 <h2 className="month-h">{m}</h2>
-                {xs.map((c) => <ChallengeCard key={c.id} c={c} />)}
+                <div className="cc-grid">{xs.map((c) => <ChallengeCard key={c.id} c={c} />)}</div>
               </section>
-            )) : list.map((c) => (tab === 'open' ? <OpenCard key={c.id} c={c} onJoin={setJoinC} /> : <ChallengeCard key={c.id} c={c} />))
+            )) : <div className="cc-grid">{list.map((c) => (tab === 'open' ? <OpenCard key={c.id} c={c} onJoin={setJoinC} /> : <ChallengeCard key={c.id} c={c} />))}</div>
           ) : (
             <div className="card empty">
               <Icon name="trophy" />

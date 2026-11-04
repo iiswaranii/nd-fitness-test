@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
               start_url: base,
               scope: base,
               display: 'standalone',
-              orientation: 'portrait',
+              orientation: 'any', // phones stay upright by habit; unfolded foldables and tablets can turn
               id: base,
               categories: ['health', 'fitness', 'lifestyle'],
               display_override: ['standalone'],
