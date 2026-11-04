@@ -44,4 +44,9 @@ export function blockZoom(): void {
   ['gesturestart', 'gesturechange', 'gestureend'].forEach((t) => document.addEventListener(t, stop, { passive: false }));
   document.addEventListener('touchmove', (e) => { if (e.touches.length > 1) stop(e); }, { passive: false });
   // Double-tap zoom is turned off in CSS (touch-action), which keeps fast repeated taps working.
+  // Long-press menu (copy / save image / open link) off, except in fields you type in.
+  document.addEventListener('contextmenu', (e) => {
+    const t = e.target as HTMLElement;
+    if (!t.closest?.('input, textarea, select, [contenteditable="true"], .selectable')) e.preventDefault();
+  });
 }

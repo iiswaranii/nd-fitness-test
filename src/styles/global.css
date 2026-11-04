@@ -811,3 +811,8 @@ button.hrow > .ic { color: var(--muted); flex: none; }
 .st-bar .l { font-size: 11.5px; font-weight: 700; color: var(--muted); white-space: nowrap; }
 .st-bar.now .l { color: var(--ink); }
 .st-bar.future .t { opacity: .45; }
+
+/* Native-app feel: long-press doesn't select or copy text (iOS + Android). Typing fields still work normally. */
+html, body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+input, textarea, select, [contenteditable="true"], .selectable { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+img, svg { -webkit-user-drag: none; user-drag: none; }
