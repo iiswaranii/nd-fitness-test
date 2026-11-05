@@ -1,5 +1,5 @@
 /**
- * Awards: enamel medallions with a polished metal rim, in the spirit of Apple Fitness awards.
+ * Awards. Trophies are classic metal cups (see cupSvg); badges are enamel coins with a polished metal rim, in the spirit of Apple Fitness awards.
  * Each activity has its own shape and colour so a shelf full of them looks varied:
  *   walk → rounded hexagon, orange · run → shield, pink · ride → circle, blue · habit → rounded diamond, green
  * The rim's metal is the place: gold (1st), silver (2nd), bronze (3rd). Badges use the coin form (no stand).
@@ -67,74 +67,89 @@ const CUP_METAL: Record<Metal, { hi: string; mid: string; lo: string; deep: stri
   steel:  { hi: '#EEF1F5', mid: '#A9B1BD', lo: '#66707D', deep: '#3D444E', ink: '#2A2F36' },
 };
 
-/** A real trophy cup: metal cup with the challenge's logo inlaid on the front, stem, and a black plinth with the place on a plate.
- *  The silhouette changes with the activity: walk = classic two-handled cup, run = tall slim cup with laurels,
- *  ride = wide bowl, habit = lidded cup with a star. */
+/** A classic gold-cup trophy in the spirit of a sports cup: ornate curled handles, the challenge's emblem
+ *  embossed in a raised medallion on the front, a star beneath it, a knotted stem, and a black plinth with
+ *  a metal plate showing the place. The metal itself is the place: gold 1st, silver 2nd, bronze 3rd. */
 function cupSvg(o: AwardOpts): string {
   const id = `cp${++seq}`;
   const m = CUP_METAL[o.metal];
-  const [e1, e2] = ENAMELS[o.enamel ?? o.kind] ?? ENAMELS.habit;
   const icon = ICON_PATHS[o.icon ?? ICON_FOR[o.kind] ?? 'sparkle'] ?? '';
-  const k = o.kind;
   const a11y = o.label ? `role="img" aria-label="${o.label.replace(/"/g, '&quot;')}"` : 'aria-hidden="true"';
   const place = o.rank === 1 ? '1ST' : o.rank === 2 ? '2ND' : o.rank === 3 ? '3RD' : '';
-
-  // cup body path + emblem centre + handles, per activity
-  let body = '', handles = '', extra = '', ex = 60, ey = 44, er = 15;
-  if (k === 'run') {            // tall, slim, flared rim; laurel sprigs either side
-    body = 'M40 12h40c0 0-1 30-8 44c-3 6-7 9-12 10c-5-1-9-4-12-10c-7-14-8-44-8-44z';
-    ey = 38; er = 13;
-    const leaf = (x: number, y: number, r: number, f: number) => `<ellipse cx="${x}" cy="${y}" rx="3.2" ry="6.5" transform="rotate(${r} ${x} ${y})" fill="url(#${id}m)" stroke="${m.lo}" stroke-width=".6" opacity="${f}"/>`;
-    extra = `<path d="M40 64C27 58 23 40 31 17M80 64C93 58 97 40 89 17" fill="none" stroke="${m.lo}" stroke-width="1.8" stroke-linecap="round"/>`
-      + [[31, 21, -30], [28.5, 32, -12], [28.5, 44, 4], [32.5, 55, 24], [89, 21, 30], [91.5, 32, 12], [91.5, 44, -4], [87.5, 55, -24]].map(([x, y, r], n) => leaf(x, y, r, n % 4 === 3 ? .85 : 1)).join('');
-  } else if (k === 'ride') {    // wide, shallow bowl with small handles
-    body = 'M24 18h72c0 0 0 20-10 31c-6 7-15 11-26 11s-20-4-26-11c-10-11-10-31-10-31z';
-    handles = `<path d="M26 24c-9 0-12 10-4 16" fill="none" stroke="url(#${id}h)" stroke-width="4" stroke-linecap="round"/><path d="M94 24c9 0 12 10 4 16" fill="none" stroke="url(#${id}h)" stroke-width="4" stroke-linecap="round"/>`;
-    ey = 38; er = 13.5;
-  } else if (k === 'habit') {   // lidded cup with a star finial
-    body = 'M34 26h52c0 0 0 22-8 32c-5 6-11 9-18 9s-13-3-18-9c-8-10-8-32-8-32z';
-    handles = `<path d="M35 32c-12 0-14 16-1 22" fill="none" stroke="url(#${id}h)" stroke-width="4.2" stroke-linecap="round"/><path d="M85 32c12 0 14 16 1 22" fill="none" stroke="url(#${id}h)" stroke-width="4.2" stroke-linecap="round"/>`;
-    extra = `<path d="M31 26c0-6 13-9 29-9s29 3 29 9z" fill="url(#${id}m)" stroke="${m.lo}" stroke-width=".8"/>
-      <path d="M60 2.5l2.6 5.4 5.9.8-4.3 4.1 1 5.9-5.2-2.8-5.2 2.8 1-5.9-4.3-4.1 5.9-.8z" fill="url(#${id}m)" stroke="${m.lo}" stroke-width=".7"/>
-      <rect x="57.5" y="14.5" width="5" height="4" rx="1" fill="${m.lo}"/>`;
-    ey = 44; er = 13.5;
-  } else {                      // walk: classic two-handled cup
-    body = 'M32 12h56c0 0 1 28-7 40c-5 8-12 12-21 12s-16-4-21-12c-8-12-7-40-7-40z';
-    handles = `<path d="M33 19c-14-1-17 18-2 25" fill="none" stroke="url(#${id}h)" stroke-width="4.6" stroke-linecap="round"/><path d="M87 19c14-1 17 18 2 25" fill="none" stroke="url(#${id}h)" stroke-width="4.6" stroke-linecap="round"/>`;
-    ey = 36; er = 14.5;
-  }
-  const rimY = k === 'ride' ? 18 : k === 'habit' ? 26 : 12;
-  const rimX1 = k === 'ride' ? 24 : k === 'habit' ? 34 : k === 'run' ? 40 : 32, rimX2 = 120 - rimX1;
-  const neckY = k === 'ride' ? 60 : k === 'habit' ? 67 : k === 'run' ? 66 : 64;
-
+  const star = (cx: number, cy: number, r: number) => {
+    const pts = Array.from({ length: 10 }, (_, i) => { const a = -Math.PI / 2 + (i * Math.PI) / 5, rr = i % 2 ? r * .45 : r; return `${(cx + rr * Math.cos(a)).toFixed(2)},${(cy + rr * Math.sin(a)).toFixed(2)}`; });
+    return 'M' + pts.join('L') + 'Z';
+  };
+  const handle = 'M28 17C22 13 17 9.5 12 10C7.5 10.5 6 15 9.5 17C11.5 18 13 16.5 12 15M12 15C9 25 15 43 35 60C39 63.5 42.5 60.5 40 57.5C38.5 56 36 56.5 36.5 58.5';
+  const handleR = 'M92 17C98 13 103 9.5 108 10C112.5 10.5 114 15 110.5 17C108.5 18 107 16.5 108 15M108 15C111 25 105 43 85 60C81 63.5 77.5 60.5 80 57.5C81.5 56 84 56.5 83.5 58.5';
+  const body = 'M27 11C26.5 33 30 51 43 66C47.5 71 51 75 52.5 80H67.5C69 75 72.5 71 77 66C90 51 93.5 33 93 11Z';
+  const icS = 1.02; // emblem scale (24-unit icons → ~24px)
   return `<svg class="award cup" viewBox="0 0 120 150" ${a11y}>
 <defs>
-  <linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${m.lo}"/><stop offset=".18" stop-color="${m.mid}"/><stop offset=".36" stop-color="${m.hi}"/><stop offset=".55" stop-color="${m.mid}"/><stop offset=".8" stop-color="${m.lo}"/><stop offset="1" stop-color="${m.deep}"/></linearGradient>
-  <linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m.hi}"/><stop offset=".5" stop-color="${m.mid}"/><stop offset="1" stop-color="${m.lo}"/></linearGradient>
-  <radialGradient id="${id}e" cx=".35" cy=".3" r=".8"><stop offset="0" stop-color="${e1}"/><stop offset="1" stop-color="${e2}"/></radialGradient>
-  <linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3A3A40"/><stop offset=".5" stop-color="#1C1C21"/><stop offset="1" stop-color="#0E0E11"/></linearGradient>
-  <linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".55"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-  <filter id="${id}d" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="1" stdDeviation="1" flood-color="#000" flood-opacity=".35"/></filter>
+  <linearGradient id="${id}m" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="${m.deep}"/><stop offset=".1" stop-color="${m.lo}"/><stop offset=".26" stop-color="${m.mid}"/><stop offset=".38" stop-color="${m.hi}"/><stop offset=".5" stop-color="${m.mid}"/><stop offset=".72" stop-color="${m.lo}"/><stop offset=".9" stop-color="${m.deep}"/><stop offset="1" stop-color="${m.lo}"/></linearGradient>
+  <linearGradient id="${id}v" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".18"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".32"/></linearGradient>
+  <linearGradient id="${id}h" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${m.hi}"/><stop offset=".45" stop-color="${m.mid}"/><stop offset="1" stop-color="${m.lo}"/></linearGradient>
+  <linearGradient id="${id}r" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${m.hi}"/><stop offset=".5" stop-color="${m.mid}"/><stop offset="1" stop-color="${m.deep}"/></linearGradient>
+  <linearGradient id="${id}rr" x1="1" y1="1" x2="0" y2="0"><stop offset="0" stop-color="${m.hi}"/><stop offset=".55" stop-color="${m.mid}"/><stop offset="1" stop-color="${m.lo}"/></linearGradient>
+  <radialGradient id="${id}d" cx=".4" cy=".35" r=".75"><stop offset="0" stop-color="${m.mid}"/><stop offset=".7" stop-color="${m.lo}"/><stop offset="1" stop-color="${m.deep}"/></radialGradient>
+  <linearGradient id="${id}b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3C3C42"/><stop offset=".25" stop-color="#18181C"/><stop offset="1" stop-color="#050507"/></linearGradient>
+  <linearGradient id="${id}bx" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".3" stop-color="#fff" stop-opacity=".16"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <linearGradient id="${id}s" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".75"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <clipPath id="${id}c"><path d="${body}"/></clipPath>
 </defs>
-<ellipse cx="60" cy="145" rx="38" ry="4" fill="#000" opacity=".35"/>
-${extra && k === 'run' ? extra : ''}
-${handles}
-<path d="${body}" fill="url(#${id}m)" stroke="${m.lo}" stroke-width=".8"/>
-<ellipse cx="60" cy="${rimY}" rx="${(rimX2 - rimX1) / 2}" ry="3.2" fill="${m.deep}" opacity=".55"/>
-<rect x="${rimX1 - 1}" y="${rimY - 1.6}" width="${rimX2 - rimX1 + 2}" height="3.2" rx="1.6" fill="url(#${id}m)"/>
-${extra && k === 'habit' ? extra : ''}
-<path d="M${rimX1 + 9} ${rimY + 6}c1 12 3 22 8 30" fill="none" stroke="url(#${id}s)" stroke-width="3" stroke-linecap="round" opacity=".9"/>
-<circle cx="${ex}" cy="${ey}" r="${er + 2.4}" fill="${m.deep}" opacity=".5"/>
-<circle cx="${ex}" cy="${ey}" r="${er + 1.2}" fill="url(#${id}h)"/>
-<circle cx="${ex}" cy="${ey}" r="${er}" fill="url(#${id}e)"/>
-<g transform="translate(${ex} ${ey}) scale(${(er * 1.15) / 12}) translate(-12 -12)" fill="none" stroke="#fff" stroke-width="${1.9 * 12 / (er * 1.15) * 1.05}" stroke-linecap="round" stroke-linejoin="round" filter="url(#${id}d)"><path d="${icon}"/></g>
-<path d="M54 ${neckY}h12l-1.5 10h-9z" fill="url(#${id}m)"/>
-<ellipse cx="60" cy="${neckY + 11}" rx="9" ry="3.4" fill="url(#${id}m)" stroke="${m.lo}" stroke-width=".6"/>
-<path d="M55.5 ${neckY + 13}h9l3 ${110 - neckY - 13}h-15z" fill="url(#${id}m)"/>
-<path d="M42 110h36l3 6H39z" fill="url(#${id}m)" stroke="${m.lo}" stroke-width=".6"/>
-<path d="M32 116h56a3 3 0 0 1 3 3v19a3 3 0 0 1-3 3H32a3 3 0 0 1-3-3v-19a3 3 0 0 1 3-3z" fill="url(#${id}b)"/>
-<path d="M32 116h56a3 3 0 0 1 3 3v1.5H29V119a3 3 0 0 1 3-3z" fill="#fff" opacity=".12"/>
-${place ? `<rect x="42" y="122" width="36" height="13" rx="2" fill="url(#${id}m)"/><text x="60" y="132" text-anchor="middle" font-size="9.5" font-weight="800" letter-spacing=".8" fill="${m.ink}" font-family="Sora, system-ui, -apple-system, sans-serif">${place}</text>` : ''}
+<ellipse cx="60" cy="146" rx="40" ry="3.6" fill="#000" opacity=".35"/>
+<!-- handles: metal with a dark inner channel -->
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="${handle}" stroke="${m.deep}" stroke-width="9.4"/><path d="${handle}" stroke="url(#${id}h)" stroke-width="7.4"/><path d="${handle}" stroke="${m.deep}" stroke-width="2.4" opacity=".9"/><path d="${handle}" stroke="${m.hi}" stroke-width=".7" opacity=".7" transform="translate(-1.6 -.6)"/>
+  <path d="${handleR}" stroke="${m.deep}" stroke-width="9.4"/><path d="${handleR}" stroke="url(#${id}h)" stroke-width="7.4"/><path d="${handleR}" stroke="${m.deep}" stroke-width="2.4" opacity=".9"/><path d="${handleR}" stroke="${m.hi}" stroke-width=".7" opacity=".5" transform="translate(1.6 -.6)"/>
+</g>
+<!-- cup -->
+<path d="${body}" fill="url(#${id}m)"/>
+<g clip-path="url(#${id}c)">
+  <path d="${body}" fill="url(#${id}v)"/>
+  <!-- flat facets either side, and the V panels that sweep to the stem -->
+  <path d="M27 11C27 30 30 46 38 58L45 30L40 11Z" fill="${m.deep}" opacity=".22"/>
+  <path d="M93 11C93 30 90 46 82 58L75 30L80 11Z" fill="#fff" opacity=".08"/>
+  <path d="M35 52C42 58 50 66 55 80M85 52C78 58 70 66 65 80" fill="none" stroke="${m.deep}" stroke-width="2" opacity=".85"/>
+  <path d="M35.8 51C42.8 57 50.8 65 55.8 79M84.2 51C77.2 57 69.2 65 64.2 79" fill="none" stroke="${m.hi}" stroke-width=".9" opacity=".8"/>
+  <path d="M41 13V40M79 13V40" stroke="${m.deep}" stroke-width=".8" opacity=".45"/>
+  <path d="M36 14C35.5 30 37 44 42 54" fill="none" stroke="url(#${id}s)" stroke-width="3.2" stroke-linecap="round" opacity=".85"/>
+</g>
+<!-- rim -->
+<ellipse cx="60" cy="11.5" rx="33" ry="3.4" fill="${m.deep}"/>
+<path d="M25.5 7.5h69a2 2 0 0 1 2 2v2.4a2 2 0 0 1-2 2h-69a2 2 0 0 1-2-2V9.5a2 2 0 0 1 2-2z" fill="url(#${id}m)"/>
+<path d="M26 8.2h68" stroke="#fff" stroke-opacity=".6" stroke-width=".8"/>
+<!-- medallion with the challenge emblem embossed -->
+<circle cx="60" cy="35" r="17.2" fill="${m.deep}" opacity=".55"/>
+<circle cx="60" cy="35" r="16.2" fill="url(#${id}r)"/>
+<circle cx="60" cy="35" r="13.4" fill="url(#${id}rr)"/>
+<circle cx="60" cy="35" r="12.4" fill="url(#${id}d)"/>
+<g transform="translate(60 35) scale(${icS}) translate(-12 -12)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="${icon}" stroke="${m.deep}" stroke-width="3" transform="translate(.35 .55)" opacity=".8"/>
+  <path d="${icon}" stroke="${m.hi}" stroke-width="2.2"/>
+</g>
+<!-- star -->
+<path d="${star(60, 61, 7)}" fill="${m.deep}" transform="translate(.5 .8)" opacity=".85"/>
+<path d="${star(60, 61, 7)}" fill="url(#${id}r)"/>
+<path d="${star(60, 61, 7)}" fill="none" stroke="${m.hi}" stroke-width=".5" opacity=".8"/>
+<!-- collar, knot, stem and base -->
+<path d="M50 79.5h20a2 2 0 0 1 2 2v1.4a2 2 0 0 1-2 2H50a2 2 0 0 1-2-2v-1.4a2 2 0 0 1 2-2z" fill="url(#${id}m)"/>
+<path d="M53.5 85h13c.5 3 2.5 4.5 2.5 6.5s-2 3.5-2.5 4.5h-13c-.5-1-2.5-2.5-2.5-4.5s2-3.5 2.5-6.5z" fill="url(#${id}m)"/>
+<path d="M55.5 96h9c1 4 5 7 12 8.5h-33c7-1.5 11-4.5 12-8.5z" fill="url(#${id}m)"/>
+<path d="M40 104.5h40a2 2 0 0 1 2 2v1.6a2 2 0 0 1-2 2H40a2 2 0 0 1-2-2v-1.6a2 2 0 0 1 2-2z" fill="url(#${id}m)"/>
+<path d="M33.5 110h53a2.2 2.2 0 0 1 2.2 2.2v1.6H31.3v-1.6a2.2 2.2 0 0 1 2.2-2.2z" fill="url(#${id}m)"/>
+<path d="M40 105h40" stroke="#fff" stroke-opacity=".5" stroke-width=".7"/>
+<!-- black plinth -->
+<path d="M30 113.8h60c1.6 0 2.8 1.3 2.9 2.9l1.6 21.3H25.5l1.6-21.3c.1-1.6 1.3-2.9 2.9-2.9z" fill="url(#${id}b)"/>
+<path d="M30 113.8h60c1.6 0 2.8 1.3 2.9 2.9l1.6 21.3H25.5l1.6-21.3c.1-1.6 1.3-2.9 2.9-2.9z" fill="url(#${id}bx)"/>
+<path d="M24 138h72a2 2 0 0 1 2 2v2.2a2 2 0 0 1-2 2H24a2 2 0 0 1-2-2V140a2 2 0 0 1 2-2z" fill="url(#${id}m)"/>
+${place ? `<g>
+  <path d="M38 119h44l2 2v11l-2 2H38l-2-2v-11z" fill="${m.deep}"/>
+  <path d="M38.4 119.6h43.2l1.7 1.7v10.4l-1.7 1.7H38.4l-1.7-1.7v-10.4z" fill="url(#${id}m)"/>
+  <path d="M39.6 121.2h40.8l.9.9v8.8l-.9.9H39.6l-.9-.9v-8.8z" fill="none" stroke="${m.deep}" stroke-width=".55" opacity=".7"/>
+  <path d="${star(44.3, 126.5, 2.3)}M${star(75.7, 126.5, 2.3).slice(1)}" fill="${m.ink}" opacity=".75"/>
+  <text x="60" y="129.7" text-anchor="middle" font-size="8.6" font-weight="800" letter-spacing=".9" fill="${m.ink}" font-family="Sora, system-ui, -apple-system, sans-serif">${place}</text>
+</g>` : ''}
 </svg>`;
 }
 

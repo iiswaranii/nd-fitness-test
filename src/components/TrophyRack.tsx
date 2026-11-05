@@ -1,26 +1,32 @@
-import { useEffect, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePlacings } from './Badges';
+import { Sheet } from './Sheet';
 import { Icon } from './Icon';
 import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
 import { hasBoard } from '../lib/board';
-import { status } from '../lib/progress';
+import { status, totalDays } from '../lib/progress';
 import { lookOf } from '../lib/look';
 import { awardSvg, type AwardKind } from '../lib/award';
-import { addDays, fmtDay, today } from '../lib/dates';
+import { addDays, fmtRange, today } from '../lib/dates';
 
-type Cup = { id: string; title: string; rank: 1 | 2 | 3; of: number; end: string; kind: AwardKind; icon?: string; sample?: boolean };
+type Cup = {
+  id: string; title: string; rank: 1 | 2 | 3; of: number; start: string; end: string; kind: AwardKind; icon?: string;
+  total?: string; days?: number; length: number; sample?: boolean;
+};
 const ORD = { 1: '1st', 2: '2nd', 3: '3rd' } as const;
 const METAL = { 1: 'gold', 2: 'silver', 3: 'bronze' } as const;
-const PER_SHELF = 3;
+const KIND_NAME: Record<AwardKind, string> = { walk: 'Walk', run: 'Run', ride: 'Ride', habit: 'Habit', coin: '' };
+const SHOW = 3;
 
-/** Preview trophies, shown only to the app owner so he can see a full room. Remove when real ones exist. */
+/** Preview trophies, shown only to the app owner so he can see a full cabinet. Remove when real ones exist. */
 const PREVIEW_FOR = ['swaran2596@gmail.com'];
-const SAMPLES: [string, 1 | 2 | 3, number, AwardKind, string?][] = [
-  ['Diwali 10K walk', 1, 42, 'walk'], ['Morning run streak', 2, 31, 'run'], ['Hydration week', 1, 58, 'habit', 'drop'], ['Weekend ride 50', 3, 19, 'ride'],
-  ['5K easy walk', 2, 64, 'walk'], ['Sleep by 11', 1, 27, 'habit', 'moon'], ['Gurpurab steps', 3, 80, 'walk'], ['Monsoon miles', 2, 22, 'run'],
-  ['Early riser', 1, 35, 'habit', 'sun'], ['Sangat cycle', 3, 17, 'ride'],
+const SAMPLES: [string, 1 | 2 | 3, number, AwardKind, string, number, string?][] = [
+  ['Diwali 10K walk', 1, 42, 'walk', '12.40 km', 7], ['Morning run streak', 2, 31, 'run', '38.20 km', 12], ['Hydration week', 1, 58, 'habit', '7 days', 7, 'drop'],
+  ['Weekend ride 50', 3, 19, 'ride', '61.50 km', 4], ['5K easy walk', 2, 64, 'walk', '5.80 km', 3], ['Sleep by 11', 1, 27, 'habit', '14 days', 14, 'moon'],
+  ['Gurpurab steps', 3, 80, 'walk', '44.10 km', 18], ['Monsoon miles', 2, 22, 'run', '27.00 km', 9], ['Early riser', 1, 35, 'habit', '21 days', 21, 'sun'],
+  ['Sangat cycle', 3, 17, 'ride', '48.90 km', 5],
 ];
 
 function useCups(): { cups: Cup[]; samples: boolean } {
@@ -34,55 +40,39 @@ function useCups(): { cups: Cup[]; samples: boolean } {
         const pl = placings[c.id];
         if (!pl || pl.rank > 3) return null;
         const kind: AwardKind = c.category === 'activity' && c.sport ? c.sport : 'habit';
-        return { id: c.id, title: c.title, rank: pl.rank as 1 | 2 | 3, of: pl.of, end: c.end_date, kind, icon: kind === 'habit' ? lookOf(c).icon : undefined };
+        return {
+          id: c.id, title: c.title, rank: pl.rank as 1 | 2 | 3, of: pl.of, start: c.start_date, end: c.end_date, kind,
+          icon: kind === 'habit' ? lookOf(c).icon : undefined, total: pl.label, days: pl.days, length: totalDays(c),
+        };
       })
       .filter((x): x is Cup => !!x);
     const preview = !!user?.email && PREVIEW_FOR.includes(user.email.toLowerCase());
     const samples: Cup[] = preview
-      ? SAMPLES.map(([title, rank, of, kind, icon], i) => ({ id: `sample-${i}`, title, rank, of, kind, icon, end: addDays(today(), -9 * (i + 1)), sample: true }))
+      ? SAMPLES.map(([title, rank, of, kind, total, days, icon], i) => {
+        const end = addDays(today(), -9 * (i + 1));
+        const len = kind === 'habit' ? days : Math.max(days, 7 + (i % 3) * 7);
+        return { id: `sample-${i}`, title, rank, of, kind, icon, total, days, end, start: addDays(end, -(len - 1)), length: len, sample: true };
+      })
       : [];
     return { cups: [...real, ...samples].sort((a, b) => a.rank - b.rank || b.end.localeCompare(a.end)), samples: samples.length > 0 };
   }, [challenges, placings, user]);
 }
 
-function AwardArt({ c }: { c: Cup }) {
+function CupArt({ c }: { c: Cup }) {
   const svg = useMemo(() => awardSvg({ kind: c.kind, metal: METAL[c.rank], rank: c.rank, icon: c.icon }), [c.kind, c.rank, c.icon]);
-  return <span className="aw-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
+  return <span className="cup-art" aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
-
-function Shelf({ items, onOpen, empty }: { items: (Cup | null)[]; onOpen: (c: Cup) => void; empty?: boolean }) {
-  return (
-    <div className="case">
-      <div className="case-lights" aria-hidden="true"><i /><i /><i /></div>
-      <div className="case-row">
-        {items.map((c, i) => c ? (
-          <button key={c.id} className={`aw r${c.rank}`} disabled={c.sample} onClick={() => onOpen(c)}
-            aria-label={`${ORD[c.rank]} place in ${c.title}, out of ${c.of}${c.sample ? ' (sample)' : ''}`}>
-            <AwardArt c={c} />
-          </button>
-        ) : <div key={`e${i}`} className={`aw ${empty ? 'ghost' : 'gap'}`} aria-hidden="true">{empty ? <span className="aw-ghost" /> : null}</div>)}
-      </div>
-      <div className="case-glass" aria-hidden="true" />
-      <div className="case-plaques">
-        {items.map((c, i) => c ? (
-          <div key={c.id} className="plq"><b>{c.title}</b><span>{ORD[c.rank]} of {c.of} · {fmtDay(c.end)}</span></div>
-        ) : <div key={`p${i}`} className="plq" aria-hidden="true" />)}
-      </div>
-    </div>
-  );
-}
-
-const chunk = <T,>(xs: T[], n: number) => { const out: (T | null)[][] = []; for (let i = 0; i < xs.length; i += n) out.push(Array.from({ length: n }, (_, k) => xs[i + k] ?? null)); return out; };
 
 /**
- * Profile: one lit display shelf with your best three. "Open trophy room" shows them all.
- * Full screen (Trophy room): shelves around you in a gentle first-person view; swipe to turn.
+ * Trophies: a simple grid of cups. Tap one for a small card with the challenge and how you did.
+ * Profile shows the best three; "See all" opens the full cabinet.
  */
 export function TrophyRack({ full = false }: { full?: boolean }) {
   const nav = useNavigate();
   const { cups, samples } = useCups();
+  const [open, setOpen] = useState<Cup | null>(null);
   const count = (r: 1 | 2 | 3) => cups.filter((c) => c.rank === r).length;
-  const open = (c: Cup) => { if (!c.sample) nav(`/c/${c.id}`); };
+  const shown = full ? cups : cups.slice(0, SHOW);
 
   const tally = cups.length ? (
     <span className="tally" aria-label={`${count(1)} gold, ${count(2)} silver, ${count(3)} bronze`}>
@@ -90,84 +80,48 @@ export function TrophyRack({ full = false }: { full?: boolean }) {
     </span>
   ) : null;
 
-  if (full) {
-    return (
-      <section className="stack">
-        <div className="sec-h"><span className="small muted">{cups.length ? 'Swipe to look around' : ''}</span>{tally}</div>
-        {cups.length ? <TrophyRoom shelves={chunk(cups, PER_SHELF)} onOpen={open} /> : <Shelf items={[null, null, null]} onOpen={open} empty />}
-        {!cups.length ? <p className="cab-note">Finish 1st, 2nd or 3rd on a challenge leaderboard to win your first trophy.</p> : null}
-        {samples ? <p className="tiny muted" style={{ textAlign: 'center' }}>Sample trophies for preview. Only you can see these.</p> : null}
-      </section>
-    );
-  }
-
   return (
-    <section className="stack tight">
-      <div className="sec-h"><h2 className="h2">Trophies</h2>{tally}</div>
-      <Shelf items={cups.length ? chunk(cups.slice(0, PER_SHELF), PER_SHELF)[0] : [null, null, null]} onOpen={open} empty={!cups.length} />
-      {!cups.length ? <p className="cab-note">Finish 1st, 2nd or 3rd on a challenge leaderboard to win your first trophy.</p> : null}
+    <section className={`stack${full ? '' : ' tight'}`}>
+      <div className="sec-h">{full ? <span className="small muted">{cups.length ? `${cups.length} ${cups.length === 1 ? 'trophy' : 'trophies'}` : ''}</span> : <h2 className="h2">Trophies</h2>}{tally}</div>
       {cups.length ? (
-        <button className="link-btn cab-more" onClick={() => nav('/trophies')}>
-          <Icon name="trophy" className="ic" />{cups.length > PER_SHELF ? `Open trophy room · ${cups.length} trophies` : 'Open trophy room'}
-        </button>
+        <div className="card cups">
+          {shown.map((c) => (
+            <button key={c.id} className="cup-btn" onClick={() => setOpen(c)} aria-label={`${ORD[c.rank]} place in ${c.title}. Show details`}>
+              <CupArt c={c} />
+              <b>{c.title}</b>
+              <span>{ORD[c.rank]} of {c.of}</span>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="card cups-empty">
+          <span className="cups-ghost" aria-hidden="true"><Icon name="trophy" /></span>
+          <p className="small muted">Finish 1st, 2nd or 3rd on a challenge leaderboard to win your first trophy.</p>
+        </div>
+      )}
+      {!full && cups.length > SHOW ? (
+        <button className="link-btn" style={{ width: '100%' }} onClick={() => nav('/trophies')}>See all {cups.length} trophies</button>
       ) : null}
       {samples ? <p className="tiny muted" style={{ textAlign: 'center' }}>Sample trophies for preview. Only you can see these.</p> : null}
+
+      <Sheet open={!!open} onClose={() => setOpen(null)} label={open ? `${ORD[open.rank]} place, ${open.title}` : 'Trophy'}>
+        {open ? (
+          <div className="stack cup-sheet">
+            <div className={`cup-hero r${open.rank}`}><CupArt c={open} /></div>
+            <p className="eyebrow">{ORD[open.rank]} place · {KIND_NAME[open.kind]} challenge</p>
+            <h2 className="h1" style={{ fontSize: 26 }}>{open.title}</h2>
+            <p className="small muted">{fmtRange(open.start, open.end)}</p>
+            <div className="cup-stats">
+              <div><span>Place</span><b>{ORD[open.rank]}</b><em>of {open.of}</em></div>
+              {open.kind !== 'habit' && open.total ? <div><span>Your total</span><b>{open.total}</b></div> : null}
+              <div><span>Days logged</span><b>{open.days ?? '—'}</b><em>of {open.length}</em></div>
+            </div>
+            {open.sample
+              ? <p className="tiny muted">Sample trophy. Real ones open their challenge.</p>
+              : <button className="btn" onClick={() => { const id = open.id; setOpen(null); nav(`/c/${id}`); }}>View challenge</button>}
+          </div>
+        ) : null}
+      </Sheet>
     </section>
-  );
-}
-
-/** Shelves placed around the viewer on a gentle curve. Drag / swipe (or the arrows) to turn; it settles on a shelf. */
-function TrophyRoom({ shelves, onOpen }: { shelves: (Cup | null)[][]; onOpen: (c: Cup) => void }) {
-  const wrap = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(320);
-  const [idx, setIdx] = useState(0);
-  const [drag, setDrag] = useState<number | null>(null); // live offset in shelves while dragging
-  const start = useRef<{ x: number; y: number; locked: boolean | null } | null>(null);
-  useEffect(() => {
-    const el = wrap.current; if (!el) return;
-    const ro = new ResizeObserver(() => setW(el.clientWidth));
-    ro.observe(el); setW(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
-
-  const n = shelves.length;
-  const pw = Math.min(340, w - 56);                 // shelf width
-  const step = 34;                                   // degrees between shelves
-  const R = pw / 2 / Math.tan((step / 2) * Math.PI / 180) + 8;
-  const pos = idx + (drag ?? 0);
-  const go = (i: number) => { setIdx(Math.max(0, Math.min(n - 1, i))); try { navigator.vibrate?.(5); } catch { /* not supported */ } };
-
-  const down = (e: RPointerEvent) => { if ((e.target as HTMLElement).closest('button')) return; start.current = { x: e.clientX, y: e.clientY, locked: null }; };
-  const move = (e: RPointerEvent) => {
-    const s = start.current; if (!s) return;
-    const dx = e.clientX - s.x, dy = e.clientY - s.y;
-    if (s.locked === null && Math.hypot(dx, dy) > 8) { s.locked = Math.abs(dx) > Math.abs(dy); if (s.locked) (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId); }
-    if (s.locked) { let d = -dx / pw; if (idx + d < 0 || idx + d > n - 1) d *= .35; setDrag(d); }
-  };
-  const up = () => { const s = start.current; start.current = null; if (!s?.locked || drag === null) { setDrag(null); return; } go(Math.abs(drag) > .18 && Math.abs(drag) < .5 ? idx + Math.sign(drag) : Math.round(idx + drag)); setDrag(null); };
-
-  return (
-    <div className="room" ref={wrap}>
-      <div className="room-view" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} style={{ touchAction: 'pan-y' }}>
-        <div className="room-floor" aria-hidden="true" />
-        <div className="room-scene" style={{ transform: `translateZ(${R}px) rotateY(${pos * step}deg)`, transition: drag === null ? 'transform .55s cubic-bezier(.2,.8,.2,1)' : 'none' }}>
-          {shelves.map((items, i) => {
-            const off = Math.abs(i - pos);
-            return (
-              <div key={i} className="room-wall" aria-hidden={i !== idx} style={{ width: pw, marginLeft: -pw / 2, transform: `rotateY(${-i * step}deg) translateZ(${-R}px)`, opacity: off > 2.2 ? 0 : 1 - Math.min(.55, off * .3) }}>
-                <Shelf items={items} onOpen={onOpen} />
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      {n > 1 ? (
-        <div className="room-nav">
-          <button className="navb" onClick={() => go(idx - 1)} disabled={idx === 0} aria-label="Previous shelf"><Icon name="back" /></button>
-          <div className="dots" aria-hidden="true">{shelves.map((_, i) => <i key={i} className={i === idx ? 'on' : ''} />)}</div>
-          <button className="navb" onClick={() => go(idx + 1)} disabled={idx === n - 1} aria-label="Next shelf"><Icon name="chev" /></button>
-        </div>
-      ) : null}
-    </div>
   );
 }

@@ -11,7 +11,7 @@ export type Badge = {
 };
 
 /** Finished leaderboard results for this member: challenge id → place and field size. */
-export type Placings = Record<string, { rank: number; of: number }>;
+export type Placings = Record<string, { rank: number; of: number; label?: string; days?: number }>;
 
 /** Best run of consecutive days with a "win": any walk/run/ride, or a habit goal met. */
 function bestStreak(acts: Activity[], logs: HabitLog[], cs: Challenge[]): { best: number; current: number } {

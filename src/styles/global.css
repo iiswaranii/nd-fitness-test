@@ -901,38 +901,32 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 .coin svg, .award { width: 100%; height: auto; display: block; overflow: visible; }
 .coin.locked { opacity: .5; filter: grayscale(1); }
 
-/* ---------- trophies: a lit display case (always a dark case, like a museum shelf, in both themes) ---------- */
-.case { position: relative; overflow: hidden; border-radius: 24px; padding: 18px 14px 12px; color: #F5F5F7;
-  background: radial-gradient(120% 70% at 50% -10%, #2A2A31 0%, #17171B 55%, #0F0F12 100%);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / .06), 0 18px 40px -18px rgb(0 0 0 / .55); }
-.case-lights { position: absolute; inset: 0 0 auto; height: 70%; display: grid; grid-template-columns: repeat(3, 1fr); pointer-events: none; }
-.case-lights i { background: radial-gradient(60% 85% at 50% 0%, rgb(255 236 200 / .20), transparent 70%); }
-.case-row { position: relative; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end; }
-.aw { position: relative; display: grid; place-items: end center; background: none; border: 0; padding: 0 4px; min-height: 96px; color: inherit; cursor: pointer;
-  transition: transform .35s cubic-bezier(.2,.8,.2,1); -webkit-tap-highlight-color: transparent; }
-.aw:disabled { cursor: default; }
-.aw:not(:disabled):active { transform: translateY(-4px) scale(1.03); }
-.aw-art { display: block; width: min(100%, 96px); filter: drop-shadow(0 10px 12px rgb(0 0 0 / .55)); }
-.aw.r1 .aw-art { width: min(100%, 106px); }
-.aw-ghost { display: block; width: 62%; aspect-ratio: 120 / 140; border-radius: 30% 30% 12px 12px; border: 1.5px dashed rgb(255 255 255 / .16); margin-bottom: 4px; }
-.case-glass { position: relative; height: 10px; margin: 2px -14px 0; border-radius: 2px;
-  background: linear-gradient(rgb(255 255 255 / .28), rgb(255 255 255 / .06) 40%, rgb(255 255 255 / .02));
-  box-shadow: 0 1px 0 rgb(255 255 255 / .25) inset, 0 12px 18px -8px rgb(0 0 0 / .7); }
-.case-plaques { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding-top: 10px; text-align: center; }
-.plq { min-width: 0; display: grid; gap: 1px; }
-.plq b { font-size: 12px; font-weight: 700; color: #F5F5F7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.plq span { font-size: 10.5px; color: #9A9AA2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cab-more { display: inline-flex; align-items: center; gap: 6px; justify-content: center; }
-
-/* ---------- trophy room: shelves around you, gentle first-person 3D ---------- */
-.room { display: grid; gap: 12px; }
-.room-view { position: relative; height: 330px; perspective: 900px; perspective-origin: 50% 40%; overflow: hidden; border-radius: 26px; cursor: grab; user-select: none;
-  background: linear-gradient(180deg, #121216 0%, #0B0B0E 62%, #17130F 62%, #0D0B09 100%); }
-.room-view:active { cursor: grabbing; }
-.room-floor { position: absolute; inset: 62% 0 0; background: repeating-linear-gradient(90deg, rgb(255 255 255 / .025) 0 1px, transparent 1px 60px), radial-gradient(70% 90% at 50% 0%, rgb(255 210 150 / .10), transparent 70%); pointer-events: none; }
-.room-scene { position: absolute; left: 50%; top: 22px; width: 0; height: 0; transform-style: preserve-3d; }
-.room-wall { position: absolute; top: 0; transform-style: preserve-3d; backface-visibility: hidden; transition: opacity .4s; }
-.room-wall .case { box-shadow: inset 0 0 0 1px rgb(255 255 255 / .08), 0 30px 60px -20px rgb(0 0 0 / .8); }
-.room-nav { display: flex; align-items: center; justify-content: center; gap: 14px; }
-.room-nav .dots { margin: 0; }
-@media (prefers-reduced-motion: reduce) { .room-scene { transition: none !important; } }
+/* ---------- trophies: a simple grid of cups; tap one for its details ---------- */
+.aw-art { display: block; filter: drop-shadow(0 8px 10px rgb(0 0 0 / .28)); }
+.aw-art svg { width: 100%; height: auto; display: block; }
+.cups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 8px; padding: 18px 10px 14px; }
+.cup-btn { display: grid; justify-items: center; gap: 2px; min-width: 0; background: none; border: 0; padding: 4px 2px; color: inherit; font: inherit; cursor: pointer;
+  border-radius: 16px; -webkit-tap-highlight-color: transparent; transition: transform .25s cubic-bezier(.2,.8,.2,1), background .2s; }
+.cup-btn:active { transform: scale(.95); background: var(--surface-2); }
+.cup-btn:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+.cup-art { display: block; width: min(100%, 84px); margin-bottom: 6px; filter: drop-shadow(0 8px 10px rgb(0 0 0 / .25)); }
+.cup-art svg { width: 100%; height: auto; display: block; }
+.cup-btn b { font-size: 12.5px; font-weight: 700; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cup-btn span { font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.cups-empty { display: grid; justify-items: center; gap: 8px; padding: 22px 18px; text-align: center; }
+.cups-ghost { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-2); color: var(--muted); }
+.cups-ghost svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.cup-sheet { align-items: center; text-align: center; padding-bottom: 8px; }
+.cup-hero { width: 150px; padding: 10px 0 2px; position: relative; animation: cup-in .5s cubic-bezier(.2,.9,.25,1.2) both; }
+.cup-hero::before { content: ''; position: absolute; inset: 0 -30px 10px; border-radius: 50%; z-index: -1;
+  background: radial-gradient(closest-side, var(--glow, rgb(245 197 66 / .35)), transparent); }
+.cup-hero.r2 { --glow: rgb(190 200 214 / .4); } .cup-hero.r3 { --glow: rgb(201 119 62 / .32); }
+.cup-hero .cup-art { width: 100%; margin: 0; }
+@keyframes cup-in { from { transform: translateY(14px) scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+.cup-stats { width: 100%; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 8px; margin: 4px 0 6px; }
+.cup-stats div { display: grid; gap: 2px; padding: 12px 6px; border-radius: 16px; background: var(--surface-2); min-width: 0; }
+.cup-stats span { font-size: 11.5px; color: var(--muted); font-weight: 700; }
+.cup-stats b { font-size: 18px; font-weight: 800; letter-spacing: -.02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cup-stats em { font-style: normal; font-size: 11.5px; color: var(--muted); font-weight: 600; }
+.cup-sheet .btn { width: 100%; }
+@media (prefers-reduced-motion: reduce) { .cup-hero { animation: none; } }

@@ -36,7 +36,7 @@ export function usePlacings(): Placings {
         if (!resultsOf(r[0], r[1]).final) continue; // trophies only once every time zone has finished
         const rows = rankBoard(r[0], r[1], user.id);
         const i = rows.findIndex((x) => x.me);
-        if (i >= 0 && rows[i].value > 0) p[r[0].id] = { rank: i + 1, of: rows.length };
+        if (i >= 0 && rows[i].value > 0) p[r[0].id] = { rank: i + 1, of: rows.length, label: rows[i].label, days: rows[i].days };
       }
       if (alive) setPlacings(p);
     });
