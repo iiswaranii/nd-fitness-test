@@ -17,7 +17,7 @@ export function Page({ children }: { children: ReactNode }) {
           {DEMO_AUTH ? <p className="demo-banner">Test mode · data stays on this phone</p> : null}
         </main>
       </div>
-      <TabBar />
+      {pane === 'single' ? <TabBar /> : null}
     </div>
   );
 }

@@ -25,3 +25,16 @@ export function BadgesPage() {
     </Screen>
   );
 }
+
+/** Trophies and badges together (the right-hand page next to Profile on foldables and tablets). */
+export function AwardsPage() {
+  return (
+    <Screen back>
+      <div className="stack">
+        <h1 className="h1">Trophies & badges</h1>
+        <TrophyRack full />
+        <Badges full />
+      </div>
+    </Screen>
+  );
+}

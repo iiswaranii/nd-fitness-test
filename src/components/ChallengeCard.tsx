@@ -1,6 +1,7 @@
 import { joinByText, regOpensText, fmtWindow } from '../lib/dates';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useOpenInPane } from '../lib/pane';
 import { Icon } from './Icon';
 import { Bar } from './Ring';
 import { useStore } from '../lib/store';
@@ -21,12 +22,13 @@ export function StatusPill({ c, done }: { c: Challenge; done?: boolean }) {
 /** Card for a joined, active or finished challenge: progress bar and numbers. */
 export function ChallengeCard({ c }: { c: Challenge }) {
   const nav = useNavigate();
+  const openPath = useOpenInPane();
   const { allActivities: activities, logs, newIds } = useStore();
   const look = lookOf(c);
   const st = status(c);
   const p = c.joined && st !== 'upcoming' ? progress(c, activities, logs) : null;
   return (
-    <button className={`card cc ${newIds.has(c.id) ? 'is-new' : ''}`} style={{ ['--c' as string]: look.color }} onClick={() => nav(`/c/${c.id}`)}>
+    <button className={`card cc ${newIds.has(c.id) ? 'is-new' : ''}${openPath === `/c/${c.id}` ? ' sel' : ''}`} aria-current={openPath === `/c/${c.id}` ? 'true' : undefined} style={{ ['--c' as string]: look.color }} onClick={() => nav(`/c/${c.id}`)}>
       <div className="cc-top">
         <span className="sp"><Icon name={look.icon} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
@@ -53,6 +55,7 @@ export function ChallengeCard({ c }: { c: Challenge }) {
 /** Card for a challenge the member can join (or will be able to soon). Tinted, with a big Join button. */
 export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) => void }) {
   const nav = useNavigate();
+  const openPath = useOpenInPane();
   const { newIds, markSeen } = useStore();
   // Keep the badge for this visit, but count the challenge as seen once it has been on screen for a moment.
   const [isNew] = useState(() => newIds.has(c.id));
@@ -73,7 +76,7 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
   const can = canJoin(c);
   return (
     // The whole card opens the details; the Join button only joins. (The title is the keyboard/screen-reader target.)
-    <div ref={ref} className={`card cc open ${isNew ? 'is-new' : ''}`} style={{ ['--c' as string]: look.color, cursor: 'pointer' }} onClick={() => nav(`/c/${c.id}`)}>
+    <div ref={ref} className={`card cc open ${isNew ? 'is-new' : ''}${openPath === `/c/${c.id}` ? ' sel' : ''}`} style={{ ['--c' as string]: look.color, cursor: 'pointer' }} onClick={() => nav(`/c/${c.id}`)}>
       <button className="cc-top" style={{ background: 'none', border: 0, padding: 0, textAlign: 'left', width: '100%' }} onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}>
         <span className="sp"><Icon name={look.icon} /></span>
         <span className="grow" style={{ minWidth: 0 }}>

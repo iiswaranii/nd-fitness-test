@@ -881,7 +881,14 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 
 /* ---------- dual pane: unfolded foldables and tablets show two tabs side by side ---------- */
 #root { container-type: inline-size; }
-.duo { position: fixed; inset: 0; display: flex; background: var(--bg); }
+.duo { position: fixed; inset: 0; display: flex; flex-direction: column; background: var(--bg); }
+.duo-panes { flex: 1 1 auto; min-height: 0; display: flex; }
+/* One tab bar across both panes, always at the bottom (never the side rail). */
+.duo > .tabbar { order: 0; width: auto; flex-direction: row; display: grid; grid-template-columns: repeat(var(--n), 1fr);
+  border-top: 1px solid var(--line); border-right: 0; padding: 6px max(8px, calc((100% - 720px) / 2)) calc(var(--sab) + 6px); }
+.duo > .tabbar .tab { flex-direction: row; gap: 6px; justify-content: center; min-height: 52px; font-size: 12.5px; }
+.duo > .tabbar .tab-pill { width: 56px; height: 30px; }
+.duo > .tabbar .tab-badge { left: calc(50% + 4px); top: 0; }
 .pane { position: relative; flex: 1 1 0; min-width: 0; overflow-y: auto; overflow-x: hidden; background: var(--bg);
   container-type: inline-size; transform: translateZ(0); /* sheets & menus stay inside their pane */
   overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-x pan-y; }
@@ -891,9 +898,9 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 .pane .rdeck { position: fixed; }
 /* Hinge across the middle: each pane exactly on one side of the fold, nothing under it. */
 @media (horizontal-viewport-segments: 2) {
-  .duo .pane:first-child { flex: 0 0 env(viewport-segment-width 0 0, 50%); }
+  .duo-panes .pane:first-child { flex: 0 0 env(viewport-segment-width 0 0, 50%); }
   .duo-gap { width: calc(env(viewport-segment-left 1 0, 50%) - env(viewport-segment-right 0 0, 50%)); background: #000000; }
-  .duo .pane:last-child { flex: 0 0 env(viewport-segment-width 1 0, 50%); }
+  .duo-panes .pane:last-child { flex: 0 0 env(viewport-segment-width 1 0, 50%); }
 }
 
 /* ---------- awards: badge coins ---------- */
@@ -930,3 +937,6 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 .cup-stats em { font-style: normal; font-size: 11.5px; color: var(--muted); font-weight: 600; }
 .cup-sheet .btn { width: 100%; }
 @media (prefers-reduced-motion: reduce) { .cup-hero { animation: none; } }
+
+/* Dual pane: the challenge open on the right is marked in the list on the left. */
+.cc.sel { box-shadow: 0 0 0 2px var(--c, var(--brand)), 0 8px 24px -12px color-mix(in srgb, var(--c, var(--brand)) 60%, transparent); }

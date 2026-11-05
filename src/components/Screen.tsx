@@ -1,5 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { useContext } from 'react';
+import { PaneRootContext, usePane } from '../lib/pane';
 import { Icon } from './Icon';
 import { DEMO_AUTH } from '../lib/config';
 
@@ -11,8 +13,14 @@ export function Screen({
   children, back, onBack, right, center, className = '',
 }: { children: ReactNode; back?: boolean; onBack?: () => void; right?: ReactNode; center?: boolean; className?: string }) {
   const nav = useNavigate();
+  const loc = useLocation();
+  const pane = usePane();
+  const paneRoot = useContext(PaneRootContext);
   const ref = useRef<HTMLDivElement>(null);
-  const goBack = onBack ?? (() => (history.length > 1 ? nav(-1) : nav('/')));
+  // Right pane of a foldable: its first page has nothing to go back to, so no back button there.
+  // In the right pane, back always steps back inside that pane.
+  if (pane === 'right' && paneRoot && (loc.pathname + loc.search === paneRoot || loc.pathname === paneRoot)) back = false;
+  const goBack = pane === 'right' ? () => nav(-1) : onBack ?? (() => (history.length > 1 ? nav(-1) : nav('/')));
 
   useEffect(() => {
     if (!back) return;
