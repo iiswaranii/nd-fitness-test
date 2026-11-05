@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
-import { Trophy, type Tier } from './Trophy';
+import { Award } from './Award';
 import { useSession } from '../lib/session';
 import { data } from '../lib/data';
 import { hasBoard, rankBoard } from '../lib/board';
@@ -12,7 +12,6 @@ import { lookOf } from '../lib/look';
 import type { Challenge } from '../lib/types';
 
 const place = (n: number) => { const s = ['th', 'st', 'nd', 'rd'], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
-const TIER: Record<number, Tier> = { 1: 'gold', 2: 'silver', 3: 'bronze' };
 
 /**
  * A finished challenge, kept short: your result, how many took part (a count, not a list),
@@ -47,7 +46,7 @@ export function FinishedSummary({ c, p }: { c: Challenge; p: Progress | null }) 
           <p className="eyebrow">Your result</p>
           <div className="fsum-top">
             {board && info?.rank && !waiting ? (
-              info.rank <= 3 ? <Trophy tier={TIER[info.rank]} rank={info.rank} size={64} /> : <div className="fsum-rank">#{info.rank}</div>
+              info.rank <= 3 ? <Award c={c} place={info.rank} size={58} /> : <div className="fsum-rank">#{info.rank}</div>
             ) : (
               <div className={`fsum-badge${p.done ? ' ok' : ''}`}>{p.done ? <Icon name="check" /> : <b>{Math.floor(p.pct)}%</b>}</div>
             )}

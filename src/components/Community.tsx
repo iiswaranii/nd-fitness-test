@@ -12,7 +12,7 @@ import { lookOf } from '../lib/look';
 import { status } from '../lib/progress';
 import type { Challenge, Participant } from '../lib/types';
 import { Flag } from './Flag';
-import { Trophy, type Tier } from './Trophy';
+import { Award } from './Award';
 
 /** "India", "India and Canada", "India, Canada and the UK" */
 const listOf = (xs: string[]) => (xs.length <= 1 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
@@ -132,7 +132,7 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
           <span className="rv">{fmt(wow.now)}</span>
         </div>
       ) : null}
-      {podium.length ? <Podium rows={podium} finished={final} /> : null}
+      {podium.length ? <Podium c={c} rows={podium} finished={final} /> : null}
       {shown.length ? <div className="list">
         {shown.map((r) => (
           <div key={r.user_id} className={`board-row ${r.me ? 'me' : ''}`}>
@@ -153,14 +153,13 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
 }
 
 /** Top three on steps: 2nd · 1st · 3rd, each with a trophy. */
-function Podium({ rows, finished }: { rows: (BoardRow & { rank: number })[]; finished: boolean }) {
+function Podium({ c, rows, finished }: { c: Challenge; rows: (BoardRow & { rank: number })[]; finished: boolean }) {
   const order = [rows[1], rows[0], rows[2]].filter(Boolean) as (BoardRow & { rank: number })[];
-  const tier = (r: number): Tier => (r === 1 ? 'gold' : r === 2 ? 'silver' : 'bronze');
   return (
     <div className="podium" aria-label={finished ? 'Final podium' : 'Current top three'}>
       {order.map((r) => (
         <div key={r.user_id} className={`pod p${r.rank} ${r.me ? 'me' : ''}`}>
-          <Trophy tier={tier(r.rank)} size={r.rank === 1 ? 52 : 42} />
+          <Award c={c} place={r.rank} size={r.rank === 1 ? 54 : 44} />
           <Avatar name={r.name} size={r.rank === 1 ? 46 : 38} />
           <span className="pn">{r.name.split(' ')[0]}<Flag country={r.country} /></span>
           <span className="pv">{r.label}</span>

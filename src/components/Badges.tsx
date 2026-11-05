@@ -1,7 +1,7 @@
 import { resultsOf } from '../lib/results';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Icon } from './Icon';
+import { awardSvg, type Metal } from '../lib/award';
 import { Sheet } from './Sheet';
 import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
@@ -10,12 +10,14 @@ import { hasBoard, rankBoard } from '../lib/board';
 import { status } from '../lib/progress';
 import { computeBadges, type Badge, type Placings } from '../lib/badges';
 
+/** A badge as an enamel coin with a metal rim (same family as the trophies). Locked ones are grey. */
+const COIN: Record<string, { metal: Metal; enamel: string }> = {
+  gold: { metal: 'gold', enamel: 'gold' }, silver: { metal: 'silver', enamel: 'blue' }, bronze: { metal: 'bronze', enamel: 'amber' },
+  green: { metal: 'silver', enamel: 'green' }, blue: { metal: 'silver', enamel: 'blue' },
+};
 function Medal({ b, size = 64 }: { b: Badge; size?: number }) {
-  return (
-    <span className={`medal t-${b.tier} ${b.earned ? '' : 'locked'}`} style={{ width: size, height: size }} aria-hidden="true">
-      <Icon name={b.icon} />
-    </span>
-  );
+  const svg = useMemo(() => { const k = COIN[b.tier] ?? { metal: 'silver' as Metal, enamel: 'teal' }; return awardSvg({ kind: 'coin', metal: b.earned ? k.metal : 'steel', enamel: b.earned ? k.enamel : 'steelE', icon: b.icon }); }, [b.tier, b.earned, b.icon]);
+  return <span className={`coin ${b.earned ? '' : 'locked'}`} style={{ width: size, height: size * 112 / 120 }} aria-hidden="true" dangerouslySetInnerHTML={{ __html: svg }} />;
 }
 
 /** Finishing places from finished leaderboard challenges the member took part in. */

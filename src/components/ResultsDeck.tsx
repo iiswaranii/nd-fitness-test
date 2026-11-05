@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
-import { Trophy, type Tier } from './Trophy';
+import { Award } from './Award';
 import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
 import { data } from '../lib/data';
@@ -40,7 +40,6 @@ function nextStep(r: Result): string {
   return 'Tip: set a daily target to keep a steady pace.';
 }
 
-const TIER: Record<number, Tier> = { 1: 'gold', 2: 'silver', 3: 'bronze' };
 
 const seenKey = (uid: string) => `ndf-results-seen-${uid}`;
 const readSeen = (uid: string): string[] => { try { return JSON.parse(localStorage.getItem(seenKey(uid)) || '[]'); } catch { return []; } };
@@ -200,7 +199,7 @@ function ResultCard({ r, depth, top, last, onGone, onOpen }: { r: Result; depth:
 
       <div className="rcard-hero">
         {podium ? (
-          <Trophy tier={TIER[r.rank!]} rank={r.rank!} size={96} />
+          <Award c={r.c} place={r.rank!} size={104} />
         ) : r.rank !== null ? (
           <div className="rcard-rank"><b>#{r.rank}</b><span>of {r.of}</span></div>
         ) : (

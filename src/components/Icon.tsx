@@ -1,4 +1,4 @@
-const P: Record<string, string> = {
+export const ICON_PATHS: Record<string, string> = {
   run: 'M15.5 2.7a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6zM5 19.5l3.5.5 2.3-3.5 3 2.5V21M10.8 16.5l1.7-6.5-3.2 1-2 3M12.5 10l3 .5 1.8 3 3 .5',
   ride: 'M6 13a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM18 13a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7zM6 16.5l3.5-6.5h6l2.5 6.5M9.5 10 8 7H6M15.5 10l-1.5-3h2.5M12 16.5 9.5 10',
   drop: 'M12 3.5s6 6.4 6 11a6 6 0 0 1-12 0c0-4.6 6-11 6-11z',
@@ -46,10 +46,10 @@ const P: Record<string, string> = {
   key: 'M14.5 4a5.5 5.5 0 1 1-4.9 8l-6.1 6.1V21h3v-2h2v-2h2l1.1-1.1A5.5 5.5 0 0 1 14.5 4zM16 7.5v.01',
 };
 
-export function Icon({ name, className = 'ic', label }: { name: keyof typeof P | string; className?: string; label?: string }) {
+export function Icon({ name, className = 'ic', label }: { name: keyof typeof ICON_PATHS | string; className?: string; label?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden={label ? undefined : true} role={label ? 'img' : undefined} aria-label={label}>
-      <path d={P[name] ?? ''} />
+      <path d={ICON_PATHS[name] ?? ''} />
     </svg>
   );
 }
