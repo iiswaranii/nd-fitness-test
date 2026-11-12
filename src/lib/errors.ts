@@ -19,6 +19,10 @@ export function friendlyError(err: unknown): string {
   if (m.includes('timeout') || m.includes('timed out') || m.includes('aborted') || name.includes('aborterror'))
     return 'That took too long. Please try again.';
 
+  // ---- server not updated yet for a new feature ----
+  if ((m.includes('age_targets') || m.includes("'unit'") || m.includes('terms_version')) && (m.includes('column') || e?.code === 'PGRST204'))
+    return 'The server isn’t ready for age-wise targets or steps/miles yet (a database update is pending). Save with one target in km for now, or try again after the update.';
+
   // ---- sign-in and codes ----
   if (m.includes('invalid login credentials')) return 'That email and password don’t match. Please check and try again.';
   if (m.includes('email not confirmed')) return 'Please confirm your email first. We’ve sent you a code.';

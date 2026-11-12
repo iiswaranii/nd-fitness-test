@@ -48,6 +48,7 @@ export type Challenge = {
   base_target?: number;
   base_daily_target?: number | null;
   base_unit?: DistUnit | null;
+  base_daily_min?: number | null;
   /** This member's age group (index into age_targets), or null for the normal target. */
   my_band?: number | null;
   /** joined-in fields */
@@ -62,7 +63,7 @@ export type Challenge = {
   eligible: boolean;
 };
 
-export type NewChallenge = Omit<Challenge, 'id' | 'created_at' | 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'my_joined_at' | 'cancelled' | 'eligible' | 'created_by' | 'base_target' | 'base_daily_target' | 'base_unit' | 'my_band'>;
+export type NewChallenge = Omit<Challenge, 'id' | 'created_at' | 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'my_joined_at' | 'cancelled' | 'eligible' | 'created_by' | 'base_target' | 'base_daily_target' | 'base_unit' | 'base_daily_min' | 'my_band'>;
 
 export type Activity = {
   id: string; // Strava activity id

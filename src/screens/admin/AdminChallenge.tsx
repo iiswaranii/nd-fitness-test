@@ -22,7 +22,7 @@ import type { Challenge, Participant } from '../../lib/types';
 import { Flag } from '../../components/Flag';
 import { useSession } from '../../lib/session';
 import { ageRangeText, baseOf, mixedUnits, withBand } from '../../lib/agetargets';
-import { UNITS } from '../../lib/units';
+import { UNITS, unitKey } from '../../lib/units';
 import { fmtAmount, fmtClock } from '../../lib/habits';
 
 type Row = { p: Participant; value: number; pct: number; done: boolean; onTrack: boolean; counted: number; km: number; target: number; daily: number | null; pc: Challenge };
@@ -89,9 +89,9 @@ export default function AdminChallenge() {
           {c.age_targets?.length ? (
             <div className="age-list" aria-label="Targets by age">
               {c.age_targets.map((t, i) => (
-                <span key={i} className="age-chip"><b>Age {ageRangeText(t)}</b>{c.category === 'habit' ? targetText(c, t.value) : `${fmtNum(t.value)} ${t.unit && c.metric === 'distance' ? UNITS[t.unit].short : unitOf(c)}`}</span>
+                <span key={i} className="age-chip"><b>Age {ageRangeText(t)}</b>{c.category === 'habit' ? targetText(c, t.value) : (c.metric === 'days' ? `${fmtNum(t.value)} ${UNITS[t.unit ?? unitKey(c)].short} a day` : `${fmtNum(t.value)} ${t.unit && c.metric === 'distance' ? UNITS[t.unit].short : unitOf(c)}`)}</span>
               ))}
-              <span className="age-chip muted"><b>Others</b>{c.category === 'habit' ? targetText(c, c.daily_target ?? 0) : `${fmtNum(c.target)} ${unitOf(c)}`}</span>
+              <span className="age-chip muted"><b>Others</b>{c.category === 'habit' ? targetText(c, c.daily_target ?? 0) : (c.metric === 'days' ? `${fmtNum(c.daily_min ?? 0)} ${UNITS[unitKey(c)].short} a day` : `${fmtNum(c.target)} ${unitOf(c)}`)}</span>
             </div>
           ) : null}
         </div>

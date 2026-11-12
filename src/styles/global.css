@@ -556,7 +556,8 @@ select.input { padding-right: 36px; background-image: linear-gradient(45deg, tra
 .form-sec-h { display: flex; align-items: center; gap: 10px; }
 .form-sec-h .num { width: 26px; height: 26px; border-radius: 50%; background: var(--btn); color: var(--btn-ink); display: grid; place-items: center; font-size: 13px; font-weight: 800; flex: none; }
 .form-sec-h .h2 { font-size: 18px; }
-.aud-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; padding: 4px 9px; border-radius: 99px; background: color-mix(in srgb, var(--ride) 14%, transparent); color: var(--ride); white-space: nowrap; }
+.aud-tag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 12px; background: color-mix(in srgb, var(--ride) 14%, transparent); color: var(--ride); max-width: 100%; line-height: 1.35; }
+.aud-tag .ic { flex: none; }
 .aud-tag .ic { width: 14px; height: 14px; }
 
 /* install gate */
