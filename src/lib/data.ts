@@ -121,6 +121,21 @@ async function invoke(fn: string, body: Record<string, unknown>) {
   return r;
 }
 
+/**
+ * Until the newest database update is applied, PostgREST rejects columns it doesn't know yet
+ * (age_targets, terms_version). Retry once without them so the app keeps working in the meantime.
+ */
+const NEW_COLS = ['age_targets', 'terms_version'];
+async function tolerant<T>(row: Record<string, unknown>, run: (r: Record<string, unknown>) => PromiseLike<{ data: T; error: { code?: string; message?: string } | null }>) {
+  const first = await run(row);
+  if (!first.error || !(first.error.code === 'PGRST204' || /column/i.test(first.error.message ?? ''))) return first;
+  const missing = NEW_COLS.filter((c) => (first.error!.message ?? '').includes(c));
+  if (!missing.length) return first;
+  if (missing.includes('age_targets') && Array.isArray(row.age_targets) && row.age_targets.length) return first; // can't drop real age targets silently
+  const r2 = { ...row }; missing.forEach((c) => delete r2[c]);
+  return run(r2);
+}
+
 /** Each member's age group for age-wise targets (only the group, never an age). Empty if not available. */
 async function bandsOf(cid: string): Promise<Map<string, number | null>> {
   const { data, error } = await sb().rpc('challenge_target_bands', { cid });
@@ -150,12 +165,13 @@ const supabaseData: DataApi = {
     } as Challenge)).map((c) => withBand(c, bandFor(c, dob)));
   },
   async createChallenge(c) {
-    const { data: row, error } = await sb().from('challenges').insert({ ...c, created_by: await uid() }).select('id').single();
+    const me = await uid();
+    const { data: row, error } = await tolerant({ ...c, created_by: me } as Record<string, unknown>, (r) => sb().from('challenges').insert(r).select('id').single());
     if (error) throw error;
-    return row.id as string;
+    return (row as { id: string } | null)!.id;
   },
   async updateChallenge(id, c) {
-    const { data: rows, error } = await sb().from('challenges').update(c).eq('id', id).select('id');
+    const { data: rows, error } = await tolerant(c as Record<string, unknown>, (r) => sb().from('challenges').update(r).eq('id', id).select('id'));
     if (error) throw error;
     if (!rows?.length) throw new Error('Only admins can edit challenges.');
   },
@@ -165,7 +181,8 @@ const supabaseData: DataApi = {
     if (!rows?.length) throw new Error('Only the admin who created this challenge can delete it.');
   },
   async join(id, t, reminder, terms) {
-    const { error } = await sb().from('challenge_members').insert({ challenge_id: id, user_id: await uid(), daily_target: t, reminder_time: reminder, terms_version: terms });
+    const me = await uid();
+    const { error } = await tolerant({ challenge_id: id, user_id: me, daily_target: t, reminder_time: reminder, terms_version: terms }, (r) => sb().from('challenge_members').insert(r));
     if (error) throw error;
   },
   async setReminder(id, time) {
