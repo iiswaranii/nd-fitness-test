@@ -1,3 +1,4 @@
+import { fmtNum } from '../lib/units';
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from './Icon';
@@ -218,7 +219,7 @@ function ResultCard({ r, depth, top, last, onGone, onOpen }: { r: Result; depth:
 
       <div className="rcard-stats">
         <div><b>{fmtValue(r.c, r.value)}</b><span>{r.c.category === 'habit' ? 'days done' : unit}</span></div>
-        <div><b>{r.c.target}</b><span>{r.c.category === 'habit' ? 'days goal' : 'goal'}</span></div>
+        <div><b>{fmtNum(r.c.target)}</b><span>{r.c.category === 'habit' ? 'days goal' : 'goal'}</span></div>
         {r.c.category === 'habit'
           ? <div><b>{Math.min(100, Math.floor(r.pct))}%</b><span>of goal</span></div>
           : <div><b>{r.activeDays}</b><span>{r.activeDays === 1 ? 'active day' : 'active days'}</span></div>}

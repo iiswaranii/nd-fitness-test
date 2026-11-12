@@ -1,3 +1,4 @@
+import { fmtNum } from '../lib/units';
 import { FinishedSummary } from '../components/FinishedSummary';
 import { fmtMoment, joinByText, regOpensText, fmtWindow } from '../lib/dates';
 import { ReminderPicker, fmtReminder } from '../components/TimeWheel';
@@ -21,6 +22,7 @@ import { data } from '../lib/data';
 import { lookOf } from '../lib/look';
 import { audienceText, hasAudience } from '../lib/audience';
 import { ageRangeText } from '../lib/agetargets';
+import { STEPS_PER_KM, UNITS, unitKey } from '../lib/units';
 import { canJoin, challengeDays, dayText, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
 import { addDays, fmtDay, fmtKm, fmtHms, longDay, parse, relDay, today } from '../lib/dates';
 import { dayMet, habitByKey, habitGoalText } from '../lib/habits';
@@ -82,7 +84,7 @@ export default function ChallengeDetail() {
               <b style={{ fontSize: 24 }}>{Math.floor(p.pct)}%</b><span>complete</span>
             </Rings>
             <div className="legend">
-              <div><div className="lg-t">Completed</div><div className="lg-v">{fmtValue(c, p.value)}<small>/ {c.target} {unitOf(c)}</small></div></div>
+              <div><div className="lg-t">Completed</div><div className="lg-v">{fmtValue(c, p.value)}<small>/ {fmtNum(c.target)} {unitOf(c)}</small></div></div>
               <div>
                 <div className="lg-t">{p.done ? 'Result' : 'Remaining'}</div>
                 <div className="lg-v" style={{ fontSize: 18 }}>{p.done ? 'Goal complete' : <>{fmtValue(c, p.remaining)}<small>{unitOf(c)}</small></>}</div>
@@ -169,7 +171,7 @@ export default function ChallengeDetail() {
             <div className="k">How progress is counted</div>
             <div className="v" style={{ fontWeight: 600, fontSize: 14 }}>
               {c.category === 'activity'
-                ? `${c.sport === 'walk' ? 'Walks and hikes' : c.sport === 'run' ? 'Runs' : 'Rides'} added from Strava links, dated between ${fmtDay(c.start_date)} and ${fmtDay(c.end_date)}${c.metric === 'count' ? `, each at least ${c.min_km} km` : ''}. Other sports don’t count.`
+                ? `${c.sport === 'walk' ? 'Walks and hikes' : c.sport === 'run' ? 'Runs' : 'Rides'} added from Strava links, dated between ${fmtDay(c.start_date)} and ${fmtDay(c.end_date)}${c.metric === 'count' ? `, each at least ${c.min_km} ${UNITS[unitKey(c)].long}` : ''}. Other sports don’t count.${unitKey(c) === 'steps' ? ` Strava doesn’t share step counts, so steps are worked out from distance (about ${STEPS_PER_KM[c.sport ?? 'walk'].toLocaleString('en-IN')} per km).` : unitKey(c) === 'min' ? ' Active minutes are the moving time Strava records.' : ''}`
                 : 'You log it yourself in the app each day. Days before you joined or after the end date don’t count.'}
             </div>
           </div>

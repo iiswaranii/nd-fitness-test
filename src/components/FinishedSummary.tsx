@@ -1,3 +1,4 @@
+import { fmtNum } from '../lib/units';
 import { useEffect, useState } from 'react';
 import { Icon } from './Icon';
 import { Award } from './Award';
@@ -64,7 +65,7 @@ export function FinishedSummary({ c, p }: { c: Challenge; p: Progress | null }) 
           </div>
           <div className="fsum-stats">
             <div><b>{fmtValue(c, p.value)}</b><span>{c.category === 'habit' ? 'days done' : unitOf(c)}</span></div>
-            <div><b>{c.target}</b><span>{c.category === 'habit' ? 'days goal' : 'goal'}</span></div>
+            <div><b>{fmtNum(c.target)}</b><span>{c.category === 'habit' ? 'days goal' : 'goal'}</span></div>
             {c.category === 'habit'
               ? <div><b>{Math.min(100, Math.floor(p.pct))}%</b><span>of goal</span></div>
               : <div><b>{days}</b><span>{days === 1 ? 'active day' : 'active days'}</span></div>}

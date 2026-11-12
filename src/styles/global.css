@@ -998,3 +998,6 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 .empty-rich > .small { max-width: 34ch; }
 .empty-quote { margin: 4px 0 2px; max-width: 30ch; font-size: 14.5px; font-style: italic; font-weight: 600; color: var(--ink-2); text-wrap: balance; }
 .empty-rich .btn { margin-top: 4px; }
+.unit-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@container (min-width: 600px) { .unit-seg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.unit-seg button { font-size: 14px; }

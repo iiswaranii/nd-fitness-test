@@ -1,4 +1,5 @@
 import type { AgeTarget } from './agetargets';
+import type { DistUnit } from './units';
 
 export type Sport = 'walk' | 'run' | 'ride';
 export type Category = 'activity' | 'habit';
@@ -12,6 +13,8 @@ export type Challenge = {
   /** activity challenges */
   sport: Sport | null;
   metric: Metric | null;
+  /** What exercise is measured in (km by default). Thresholds (daily_min, min_km) use it too. */
+  unit?: DistUnit | null;
   daily_min: number | null; // metric=days: km needed for a day to count
   min_km: number | null; // metric=count: km needed for an activity to count
   /** habit challenges */

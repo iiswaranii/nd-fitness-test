@@ -1,5 +1,6 @@
 import type { Challenge, Participant } from './types';
-import { progress, totalDays } from './progress';
+import { fmtValue, progress, totalDays, unitOf } from './progress';
+import { amountOf } from './units';
 import { habitByKey, fmtAmount } from './habits';
 import { addDays, today } from './dates';
 import { withBand } from './agetargets';
@@ -21,7 +22,7 @@ export function rankBoard(c: Challenge, ps: Participant[], meId: string | null):
     const pr = progress({ ...pc, joined: true }, p.activities, p.logs);
     let value = pr.value, label = '';
     if (c.category === 'activity') {
-      label = c.metric === 'distance' ? `${value.toFixed(2)} km` : c.metric === 'days' ? `${value} days` : `${value} ${c.sport === 'ride' ? 'rides' : c.sport === 'run' ? 'runs' : 'walks'}`;
+      label = c.metric === 'distance' ? `${fmtValue(c, value)} ${unitOf(c)}` : c.metric === 'days' ? `${value} days` : `${value} ${c.sport === 'ride' ? 'rides' : c.sport === 'run' ? 'runs' : 'walks'}`;
     } else {
       const end = c.end_date < t ? c.end_date : t;
       value = p.logs.filter((l) => l.challenge_id === c.id && l.date >= c.start_date && l.date <= end).reduce((s, l) => s + l.value, 0);
@@ -39,11 +40,11 @@ export function nudge(c: Challenge, rows: BoardRow[]): string {
   const i = rows.findIndex((r) => r.me);
   if (i < 0) return 'Join in — every step you take counts toward the group’s total.';
   const me = rows[i];
-  const unit = c.category === 'activity' && c.metric === 'distance' ? 'km' : '';
+  const unit = c.category === 'activity' && c.metric === 'distance' ? unitOf(c) : '';
   if (me.value === 0) return 'Your first entry is the hardest one. Log today and you’re on the board!';
   if (i === 0) return 'You’re setting the pace for everyone. Keep that rhythm going!';
   const gap = rows[i - 1].value - me.value;
-  if (c.category === 'activity' && c.metric === 'distance') return `Just ${gap.toFixed(2)} ${unit} more and you move up a spot. One more walk could do it!`;
+  if (c.category === 'activity' && c.metric === 'distance') return `Just ${fmtValue(c, gap)} ${unit} more and you move up a spot. One more walk could do it!`;
   if (c.category === 'activity') return `${Math.ceil(gap)} more to move up. You’re closer than you think!`;
   const h = habitByKey(c.habit_key);
   return `${fmtAmount(Math.ceil(gap), h?.unit)} more to move up a spot. You’ve got this!`;
@@ -61,7 +62,7 @@ export function weekOverWeek(c: Challenge, p: Participant | undefined): { now: n
   if (!p) return null;
   const t = today();
   const sum = (from: string, to: string) => c.category === 'activity'
-    ? p.activities.filter((a) => a.sport === c.sport && a.date >= from && a.date <= to).reduce((s, a) => s + a.km, 0)
+    ? p.activities.filter((a) => a.sport === c.sport && a.date >= from && a.date <= to).reduce((s, a) => s + (c.metric === 'distance' ? amountOf(c, a) : a.km), 0)
     : p.logs.filter((l) => l.challenge_id === c.id && l.date >= from && l.date <= to).reduce((s, l) => s + l.value, 0);
   return { now: sum(addDays(t, -6), t), prev: sum(addDays(t, -13), addDays(t, -7)) };
 }

@@ -1,6 +1,7 @@
 -- 1. Any admin can edit any challenge (all fields, dates included, even after members joined).
 --    Only the admin who created a challenge can delete (cancel) it.
 -- 2. Age-wise targets: a challenge can set a different target for each age group (admin chooses the ranges).
+-- 2b. Exercise challenges can be measured in km, miles, steps or active minutes.
 -- 3. Members must accept the terms (health and safety consent) to join; the acceptance is stored.
 
 -- ---------- 1. edit vs delete ----------
@@ -66,6 +67,12 @@ begin
   where m.challenge_id = cid;
 end $$;
 grant execute on function public.challenge_target_bands(uuid) to authenticated;
+
+-- What an exercise challenge is measured in: km (default), miles, steps (estimated from distance), active minutes.
+-- Targets, per-day minimums and age-wise targets are all in this unit.
+alter table public.challenges add column if not exists unit text;
+alter table public.challenges drop constraint if exists challenges_unit_check;
+alter table public.challenges add constraint challenges_unit_check check (unit is null or unit in ('km', 'mi', 'steps', 'min'));
 
 -- ---------- 3. consent to join ----------
 alter table public.challenge_members

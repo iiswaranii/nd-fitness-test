@@ -125,13 +125,14 @@ async function invoke(fn: string, body: Record<string, unknown>) {
  * Until the newest database update is applied, PostgREST rejects columns it doesn't know yet
  * (age_targets, terms_version). Retry once without them so the app keeps working in the meantime.
  */
-const NEW_COLS = ['age_targets', 'terms_version'];
+const NEW_COLS = ['age_targets', 'terms_version', 'unit'];
 async function tolerant<T>(row: Record<string, unknown>, run: (r: Record<string, unknown>) => PromiseLike<{ data: T; error: { code?: string; message?: string } | null }>) {
   const first = await run(row);
   if (!first.error || !(first.error.code === 'PGRST204' || /column/i.test(first.error.message ?? ''))) return first;
   const missing = NEW_COLS.filter((c) => (first.error!.message ?? '').includes(c));
   if (!missing.length) return first;
   if (missing.includes('age_targets') && Array.isArray(row.age_targets) && row.age_targets.length) return first; // can't drop real age targets silently
+  if (missing.includes('unit') && row.unit && row.unit !== 'km') return first; // nor a unit other than km
   const r2 = { ...row }; missing.forEach((c) => delete r2[c]);
   return run(r2);
 }

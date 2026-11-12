@@ -1,3 +1,4 @@
+import { fmtNum } from '../lib/units';
 import { BrandMark } from '../components/BrandMark';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -246,7 +247,7 @@ function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge
     const missedToday = tv !== null && !p.todayMet && !growing;
     const todayRing = missedToday ? { pct: 100, color: 'var(--bad)' } : { pct: todayPct, color: look.color };
     return (
-      <button className={`card hero${missedToday ? ' missed' : ''}`} onClick={() => onOpenHabit(c)} aria-label={`${c.title}: today ${todayText}, ${dayText(c)}, ${p.value} of ${c.target} days done`}>
+      <button className={`card hero${missedToday ? ' missed' : ''}`} onClick={() => onOpenHabit(c)} aria-label={`${c.title}: today ${todayText}, ${dayText(c)}, ${p.value} of ${fmtNum(c.target)} days done`}>
         <Rings rings={[todayRing, { pct: p.pct, color: 'var(--today)' }]} size={136} label={missedToday ? 'Today: goal not met' : `Today ${Math.round(todayPct)}%`}>
           <b style={missedToday ? { color: 'var(--bad)' } : undefined}>{missedToday ? '✕' : centre}</b><span style={missedToday ? { color: 'var(--bad)' } : undefined}>{missedToday ? 'missed' : 'today'}</span>
         </Rings>
@@ -260,7 +261,7 @@ function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge
           <div>
             <div className="lg-t"><span className="dotc" style={{ background: 'var(--today)' }} /><span>{c.title}</span></div>
             <div className="lg-v" style={{ fontSize: 18 }}>Day {dayOf(c)}<small>/ {totalDays(c)}</small></div>
-            <div className="lg-s">{p.done ? 'Challenge complete' : `${p.value} of ${c.target} days done`}</div>
+            <div className="lg-s">{p.done ? 'Challenge complete' : `${p.value} of ${fmtNum(c.target)} days done`}</div>
           </div>
         </div>
       </button>
@@ -272,12 +273,12 @@ function HeroCard({ c, onOpenHabit }: { c: Challenge; onOpenHabit: (c: Challenge
   return (
     <button className="card hero" onClick={() => nav(`/c/${c.id}`)} aria-label={`${c.title}, ${Math.floor(p.pct)} percent`}>
       <Rings rings={rings} size={136} label={`${Math.round(p.pct)}% of ${c.title}`}>
-        <b>{Math.floor(p.pct)}%</b><span>{fmtValue(c, p.value)} of {c.target} {unitOf(c)}</span>
+        <b>{Math.floor(p.pct)}%</b><span>{fmtValue(c, p.value)} of {fmtNum(c.target)} {unitOf(c)}</span>
       </Rings>
       <div className="legend">
         <div>
           <div className="lg-t"><span className="dotc" style={{ background: look.color }} /><span>{c.title}</span></div>
-          <div className="lg-v">{fmtValue(c, p.value)}<small>/ {c.target} {unitOf(c)}</small></div>
+          <div className="lg-v">{fmtValue(c, p.value)}<small>/ {fmtNum(c.target)} {unitOf(c)}</small></div>
           <div className="lg-s">{p.done ? 'Goal complete' : dayText(c)}</div>
         </div>
         {c.my_daily_target ? (

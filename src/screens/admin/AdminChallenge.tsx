@@ -1,3 +1,4 @@
+import { fmtNum } from '../../lib/units';
 import { joinByText, regOpensText, fmtWindow } from '../../lib/dates';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -88,9 +89,9 @@ export default function AdminChallenge() {
           {c.age_targets?.length ? (
             <div className="age-list" aria-label="Targets by age">
               {c.age_targets.map((t, i) => (
-                <span key={i} className="age-chip"><b>Age {ageRangeText(t)}</b>{c.category === 'habit' ? targetText(c, t.value) : `${t.value} ${unitOf(c)}`}</span>
+                <span key={i} className="age-chip"><b>Age {ageRangeText(t)}</b>{c.category === 'habit' ? targetText(c, t.value) : `${fmtNum(t.value)} ${unitOf(c)}`}</span>
               ))}
-              <span className="age-chip muted"><b>Others</b>{c.category === 'habit' ? targetText(c, c.daily_target ?? 0) : `${c.target} ${unitOf(c)}`}</span>
+              <span className="age-chip muted"><b>Others</b>{c.category === 'habit' ? targetText(c, c.daily_target ?? 0) : `${fmtNum(c.target)} ${unitOf(c)}`}</span>
             </div>
           ) : null}
         </div>
@@ -116,7 +117,7 @@ export default function AdminChallenge() {
                     <tr key={r.p.user_id}>
                       <td className="n">{i + 1}</td>
                       <td><span className="strong">{r.p.name}</span><Flag country={r.p.country} />{r.p.city ? <span className="muted"> · {r.p.city}</span> : null}</td>
-                      <td className="n">{fmtValue(c, r.value)} / {r.target} {unitOf(c)}</td>
+                      <td className="n">{fmtValue(c, r.value)} / {fmtNum(r.target)} {unitOf(c)}</td>
                       <td className="n">{Math.floor(r.pct)}%</td>
                       <td>
                         {c.category === 'activity' && !r.p.strava_connected ? <span className="pill warn">No Strava link yet</span>

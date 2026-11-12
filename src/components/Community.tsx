@@ -6,6 +6,7 @@ import { Avatar } from './Avatar';
 import { Bar } from './Ring';
 import { data } from '../lib/data';
 import { useSession } from '../lib/session';
+import { UNITS, fmtIn, unitKey } from '../lib/units';
 import { hasBoard, nudge, rankBoard, together, weekOverWeek, type BoardRow } from '../lib/board';
 import { fmtAmount, habitByKey } from '../lib/habits';
 import { lookOf } from '../lib/look';
@@ -42,8 +43,8 @@ export function Community({ c, refreshKey = 0 }: { c: Challenge; refreshKey?: nu
   const me = ps.find((p) => p.user_id === user?.id);
   const wow = weekOverWeek(c, me);
   const h = habitByKey(c.habit_key);
-  const unit = c.category === 'activity' ? 'km' : h?.unit ?? '';
-  const fmt = (v: number) => (c.category === 'activity' ? `${v.toFixed(2)} km` : fmtAmount(Math.round(v), unit));
+  const unit = c.category === 'activity' ? (c.metric === 'distance' ? UNITS[unitKey(c)].short : 'km') : h?.unit ?? '';
+  const fmt = (v: number) => (c.category === 'activity' ? `${c.metric === 'distance' ? fmtIn(unitKey(c), v) : v.toFixed(2)} ${unit}` : fmtAmount(Math.round(v), unit));
   const finished = status(c) === 'finished';
 
   if (!hasBoard(c)) {

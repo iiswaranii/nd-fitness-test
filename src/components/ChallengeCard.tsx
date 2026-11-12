@@ -1,3 +1,4 @@
+import { fmtNum } from '../lib/units';
 import { joinByText, regOpensText, fmtWindow } from '../lib/dates';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -41,7 +42,7 @@ export function ChallengeCard({ c }: { c: Challenge }) {
         <>
           <Bar pct={p.pct} color={look.color} />
           <div className="cc-n">
-            <span><b>{fmtValue(c, p.value)}</b> <span className="muted">/ {c.target} {unitOf(c)}</span></span>
+            <span><b>{fmtValue(c, p.value)}</b> <span className="muted">/ {fmtNum(c.target)} {unitOf(c)}</span></span>
             <span className="muted">{p.done ? 'Goal complete' : st === 'active' ? dayText(c) : st === 'finished' ? 'Ended' : ''}</span>
           </div>
         </>

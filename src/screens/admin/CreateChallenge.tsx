@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ageRangeText, baseOf, type AgeTarget } from '../../lib/agetargets';
 import type { Challenge } from '../../lib/types';
+import { DEFAULTS, STEPS_PER_KM, UNITS, type DistUnit } from '../../lib/units';
 import { Screen } from '../../components/Screen';
 import { Button, ErrorText, TextField } from '../../components/Form';
 import { Icon } from '../../components/Icon';
@@ -51,6 +52,7 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
   const [desc, setDesc] = useState(o?.description ?? '');
   const [sport, setSport] = useState<Sport>(o?.sport ?? 'walk');
   const [metric, setMetric] = useState<Metric>(o?.metric ?? 'distance');
+  const [unit, setUnit] = useState<DistUnit>(o?.unit ?? 'km');
   const [target, setTarget] = useState(o && o.category === 'activity' ? String(o.target) : '50');
   const [minKm, setMinKm] = useState(String(o?.daily_min ?? o?.min_km ?? 3));
   const [habit, setHabit] = useState<Habit | null>(oh);
@@ -78,6 +80,14 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const editing = !!o;
+  // Switching unit resets the numbers to sensible ones for that unit (50 km ≠ 50 steps).
+  const pickUnit = (u: DistUnit) => {
+    if (u === unit) return;
+    setUnit(u);
+    if (metric === 'distance') setTarget(String(DEFAULTS[u].total));
+    else setMinKm(String(DEFAULTS[u].perDay));
+    setAgeRows((rs) => (category === 'activity' && metric === 'distance' ? rs.map((r) => ({ ...r, value: '' })) : rs));
+  };
   // Habits without a daily number (yes/no, weigh-in) can't have age-wise targets.
   const ageAllowed = category === 'activity' || (!!habit && (habit.kind === 'time' || (habit.kind === 'amount' && habit.key !== 'weigh-in')));
 
@@ -137,8 +147,8 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
       if (!(tg > 0)) return 'Set a target above zero.';
       if (metric === 'days' && tg > days) return `This challenge has only ${days} days.`;
       const mk = parseFloat(minKm);
-      if (metric !== 'distance' && !(mk > 0)) return 'Set the minimum km.';
-      return { ...base, sport, metric, target: tg, daily_min: metric === 'days' ? mk : null, min_km: metric === 'count' ? mk : null };
+      if (metric !== 'distance' && !(mk > 0)) return `Set the minimum ${UNITS[unit].long}.`;
+      return { ...base, sport, metric, unit, target: tg, daily_min: metric === 'days' ? mk : null, min_km: metric === 'count' ? mk : null };
     }
     if (!habit) return 'Choose a habit from the list.';
     let dt: number | null = null;
@@ -147,11 +157,12 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
     return { ...base, habit_key: habit.key, daily_target: dt, target: days };
   };
 
+  const uName = UNITS[unit];
   const preview = useMemo(() => {
     const r = build();
     return typeof r === 'string' ? null : r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, title, desc, sport, metric, target, minKm, habit, daily, start, end, startTime, endTime, regOpens, joinBy, limit, ageOn, minAge, maxAge, countries, states, byAge, ageRows]);
+  }, [category, title, desc, sport, metric, target, minKm, habit, daily, start, end, startTime, endTime, regOpens, joinBy, limit, ageOn, minAge, maxAge, countries, states, byAge, ageRows, unit]);
 
   return (
     <Screen back>
@@ -210,21 +221,32 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
             <div className="field">
               <span className="label">Sport</span>
               <div className="seg">
-                {(Object.keys(SPORTS) as Sport[]).map((k) => <button type="button" key={k} aria-selected={sport === k} onClick={() => setSport(k)}>{SPORTS[k].name}</button>)}
+                {(Object.keys(SPORTS) as Sport[]).map((k) => <button type="button" key={k} aria-selected={sport === k} onClick={() => { setSport(k); if (k === 'ride' && unit === 'steps') pickUnit('km'); }}>{SPORTS[k].name}</button>)}
               </div>
             </div>
             <div className="field">
               <span className="label">Goal</span>
               <div className="seg">
-                {([['distance', 'Total km'], ['days', 'Active days'], ['count', 'Sessions']] as const).map(([k, l]) => (
-                  <button type="button" key={k} aria-selected={metric === k} onClick={() => { setMetric(k); setTarget(k === 'distance' ? '50' : k === 'days' ? '15' : '10'); }}>{l}</button>
+                {([['distance', 'Total'], ['days', 'Active days'], ['count', 'Sessions']] as const).map(([k, l]) => (
+                  <button type="button" key={k} aria-selected={metric === k} onClick={() => { setMetric(k); setTarget(k === 'distance' ? String(DEFAULTS[unit].total) : k === 'days' ? '15' : '10'); }}>{l}</button>
                 ))}
               </div>
             </div>
+            <div className="field">
+              <span className="label">Measure in</span>
+              <div className="seg unit-seg">
+                {(Object.keys(UNITS) as DistUnit[]).filter((u) => sport !== 'ride' || UNITS[u].ride).map((u) => (
+                  <button type="button" key={u} aria-selected={unit === u} onClick={() => pickUnit(u)}>{UNITS[u].name}</button>
+                ))}
+              </div>
+              <p className="hint">{unit === 'steps' ? `Strava doesn’t share step counts, so steps are worked out from distance (about ${STEPS_PER_KM[sport].toLocaleString('en-IN')} per km ${sport === 'run' ? 'running' : 'walking'}).`
+                : unit === 'min' ? 'Uses the moving time Strava records for each activity.'
+                : unit === 'mi' ? 'Strava distance shown in miles (1 mile = 1.61 km).' : 'Strava distance in kilometres.'}</p>
+            </div>
             <div className="grid2">
-              <TextField label={metric === 'distance' ? 'Total distance (km)' : metric === 'days' ? 'Number of days' : 'Number of sessions'} type="number" inputMode="decimal" min="1" value={target} onChange={(e) => setTarget(e.target.value)} />
+              <TextField label={metric === 'distance' ? `Total ${uName.long}` : metric === 'days' ? 'Number of days' : 'Number of sessions'} type="number" inputMode="decimal" min="1" value={target} onChange={(e) => setTarget(e.target.value)} />
               {metric !== 'distance' ? (
-                <TextField label={metric === 'days' ? 'Km for a day to count' : 'Min km per session'} type="number" inputMode="decimal" min="0.5" step="0.5" value={minKm} onChange={(e) => setMinKm(e.target.value)} />
+                <TextField label={metric === 'days' ? `${uName.name} for a day to count` : `Min ${uName.long} per session`} type="number" inputMode="decimal" min="0" step="any" value={minKm} onChange={(e) => setMinKm(e.target.value)} />
               ) : <span />}
             </div>
           </>
@@ -265,7 +287,7 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
                   const set = (k: keyof AgeRow, v: string) => setAgeRows((rs) => rs.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
                   const valueLabel = category === 'habit'
                     ? habit?.kind === 'time' ? 'Target time' : `Daily ${habit?.dir === 'atMost' ? 'limit' : 'target'} (${habit?.unit ?? ''})`
-                    : metric === 'distance' ? 'Total km' : metric === 'days' ? 'Days' : 'Sessions';
+                    : metric === 'distance' ? `Total ${uName.short}` : metric === 'days' ? 'Days' : 'Sessions';
                   return (
                     <div key={i} className="age-row">
                       <div className="age-row-h">

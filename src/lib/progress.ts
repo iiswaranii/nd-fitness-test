@@ -1,3 +1,4 @@
+import { UNITS, amountOf, fmtIn, fmtNum, unitKey } from './units';
 import type { Activity, Challenge, HabitLog } from './types';
 import { addDays, diffDays, today } from './dates';
 import { dayMet, habitByKey } from './habits';
@@ -57,11 +58,11 @@ export type Progress = {
 
 export function unitOf(c: Challenge): string {
   if (c.category === 'habit') return 'days';
-  return c.metric === 'distance' ? 'km' : c.metric === 'days' ? 'days' : 'activities';
+  return c.metric === 'distance' ? UNITS[unitKey(c)].short : c.metric === 'days' ? 'days' : 'activities';
 }
 
 export function fmtValue(c: Challenge, v: number): string {
-  return c.category === 'activity' && c.metric === 'distance' ? (v >= 1000 ? v.toFixed(0) : v.toFixed(2)) : String(Math.round(v));
+  return c.category === 'activity' && c.metric === 'distance' ? fmtIn(unitKey(c), v) : String(Math.round(v));
 }
 
 export function goalText(c: Challenge): string {
@@ -70,9 +71,10 @@ export function goalText(c: Challenge): string {
     return c.target >= days ? `Every day for ${days} days` : `Hit your daily goal on ${c.target} of ${days} days`;
   }
   const verb = c.sport === 'walk' ? 'Walk' : c.sport === 'run' ? 'Run' : 'Ride';
-  if (c.metric === 'distance') return `${verb} ${c.target} km in total`;
-  if (c.metric === 'days') return `${verb} at least ${c.daily_min} km on ${c.target} days`;
-  return `${c.target} ${c.sport === 'walk' ? 'walks' : c.sport === 'run' ? 'runs' : 'rides'} of ${c.min_km} km or more`;
+  const u = UNITS[unitKey(c)];
+  if (c.metric === 'distance') return unitKey(c) === 'min' ? `${fmtNum(c.target)} active minutes of ${c.sport === 'walk' ? 'walking' : c.sport === 'run' ? 'running' : 'cycling'} in total` : `${verb} ${fmtNum(c.target)} ${u.long} in total`;
+  if (c.metric === 'days') return `${unitKey(c) === 'min' ? `${c.sport === 'walk' ? 'Walk' : c.sport === 'run' ? 'Run' : 'Ride'} for at least` : `${verb} at least`} ${fmtNum(c.daily_min ?? 0)} ${u.long} on ${c.target} days`;
+  return `${c.target} ${c.sport === 'walk' ? 'walks' : c.sport === 'run' ? 'runs' : 'rides'} of ${fmtNum(c.min_km ?? 0)} ${u.long} or more`;
 }
 
 /** A removed activity still counts for a challenge that had already finished when it was removed. */
@@ -92,14 +94,14 @@ export function progress(c: Challenge, allActs: Activity[], logs: HabitLog[]): P
 
   if (c.category === 'activity') {
     const inRange = acts.filter((a) => a.sport === c.sport && a.date <= end && inWindow(c, a));
-    if (c.metric === 'distance') { counted = inRange; value = inRange.reduce((s, a) => s + a.km, 0); }
+    if (c.metric === 'distance') { counted = inRange; value = inRange.reduce((s, a) => s + amountOf(c, a), 0); }
     else if (c.metric === 'days') {
       const by: Record<string, number> = {};
-      inRange.forEach((a) => { by[a.date] = (by[a.date] ?? 0) + a.km; });
+      inRange.forEach((a) => { by[a.date] = (by[a.date] ?? 0) + amountOf(c, a); });
       const ok = Object.keys(by).filter((d) => by[d] >= (c.daily_min ?? 0) - 1e-9);
       counted = inRange.filter((a) => ok.includes(a.date));
       value = ok.length; metDays = ok;
-    } else { counted = inRange.filter((a) => a.km >= (c.min_km ?? 0)); value = counted.length; }
+    } else { counted = inRange.filter((a) => amountOf(c, a) >= (c.min_km ?? 0) - 1e-9); value = counted.length; }
     if (c.my_daily_target) {
       todayValue = acts.filter((a) => a.sport === c.sport && a.date === t).reduce((s, a) => s + a.km, 0);
       todayMet = todayValue >= c.my_daily_target;
