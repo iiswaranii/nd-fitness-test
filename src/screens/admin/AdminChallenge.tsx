@@ -21,19 +21,19 @@ import { audienceText, hasAudience } from '../../lib/audience';
 import type { Challenge, Participant } from '../../lib/types';
 import { Flag } from '../../components/Flag';
 import { useSession } from '../../lib/session';
-import { ageRangeText, baseOf, withBand } from '../../lib/agetargets';
+import { ageRangeText, baseOf, mixedUnits, withBand } from '../../lib/agetargets';
+import { UNITS } from '../../lib/units';
 import { fmtAmount, fmtClock } from '../../lib/habits';
 
-type Row = { p: Participant; value: number; pct: number; done: boolean; onTrack: boolean; counted: number; km: number; target: number; daily: number | null };
+type Row = { p: Participant; value: number; pct: number; done: boolean; onTrack: boolean; counted: number; km: number; target: number; daily: number | null; pc: Challenge };
 
 function rowsFor(c: Challenge, ps: Participant[]): Row[] {
   return ps.map((p) => {
     const pc = withBand(c, p.band);
     const pr = progress({ ...pc, joined: true }, p.activities, p.logs);
-    return { p, value: pr.value, pct: pr.pct, done: pr.done, onTrack: pr.onTrack, counted: c.category === 'activity' ? pr.counted.length : pr.metDays.length, km: pr.km, target: pc.target, daily: pc.daily_target };
-  }).sort((a, b) => b.value - a.value);
+    return { p, value: pr.value, pct: pr.pct, done: pr.done, onTrack: pr.onTrack, counted: c.category === 'activity' ? pr.counted.length : pr.metDays.length, km: pr.km, target: pc.target, daily: pc.daily_target, pc };
+  }).sort((a, b) => (mixedUnits(c) ? b.pct - a.pct : b.value - a.value));
 }
-
 function exportRows(c: Challenge, rows: Row[]): (string | number | null)[][] {
   const h = habitByKey(c.habit_key);
   const st = status(c);
@@ -42,7 +42,7 @@ function exportRows(c: Challenge, rows: Row[]): (string | number | null)[][] {
     ...rows.map((r) => [
       c.title, c.category === 'activity' ? 'Physical exercise' : 'Healthy habit', goalText(withBand(c, r.p.band)), h ? habitGoalText(h, r.daily ?? h.goal ?? 0) : '',
       c.start_date, c.end_date, r.p.name, r.p.city ?? '', c.category === 'activity' ? (r.p.strava_connected ? 'Linked' : 'No link yet') : '',
-      fmtValue(c, r.value), r.target, unitOf(c), Math.floor(r.pct),
+      fmtValue(r.pc, r.value), r.target, unitOf(r.pc), Math.floor(r.pct),
       r.done ? 'Completed' : st === 'finished' ? 'Not completed' : st === 'upcoming' ? 'Not started' : r.onTrack ? 'On track' : 'Behind',
       r.counted, c.category === 'activity' ? +r.km.toFixed(2) : '',
     ]),
@@ -89,7 +89,7 @@ export default function AdminChallenge() {
           {c.age_targets?.length ? (
             <div className="age-list" aria-label="Targets by age">
               {c.age_targets.map((t, i) => (
-                <span key={i} className="age-chip"><b>Age {ageRangeText(t)}</b>{c.category === 'habit' ? targetText(c, t.value) : `${fmtNum(t.value)} ${unitOf(c)}`}</span>
+                <span key={i} className="age-chip"><b>Age {ageRangeText(t)}</b>{c.category === 'habit' ? targetText(c, t.value) : `${fmtNum(t.value)} ${t.unit && c.metric === 'distance' ? UNITS[t.unit].short : unitOf(c)}`}</span>
               ))}
               <span className="age-chip muted"><b>Others</b>{c.category === 'habit' ? targetText(c, c.daily_target ?? 0) : `${fmtNum(c.target)} ${unitOf(c)}`}</span>
             </div>
@@ -117,7 +117,7 @@ export default function AdminChallenge() {
                     <tr key={r.p.user_id}>
                       <td className="n">{i + 1}</td>
                       <td><span className="strong">{r.p.name}</span><Flag country={r.p.country} />{r.p.city ? <span className="muted"> · {r.p.city}</span> : null}</td>
-                      <td className="n">{fmtValue(c, r.value)} / {fmtNum(r.target)} {unitOf(c)}</td>
+                      <td className="n">{fmtValue(r.pc, r.value)} / {fmtNum(r.target)} {unitOf(r.pc)}</td>
                       <td className="n">{Math.floor(r.pct)}%</td>
                       <td>
                         {c.category === 'activity' && !r.p.strava_connected ? <span className="pill warn">No Strava link yet</span>

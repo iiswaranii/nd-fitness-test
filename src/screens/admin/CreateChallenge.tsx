@@ -27,7 +27,7 @@ const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')
 const START_TIMES = HOURS.map((v) => ({ value: v, label: clock12(v) }));
 const END_TIMES = [...HOURS.slice(1), '23:59'].map((v) => ({ value: v, label: clock12(v) }));
 
-type AgeRow = { min: string; max: string; value: string };
+type AgeRow = { min: string; max: string; value: string; unit?: DistUnit };
 
 /** New challenge, or (at /admin/c/:id/edit) edit an existing one. Any admin can edit any challenge. */
 export default function CreateChallenge() {
@@ -74,7 +74,7 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
   const [byAge, setByAge] = useState(!!o?.age_targets?.length);
   const [ageRows, setAgeRows] = useState<AgeRow[]>(
     o?.age_targets?.length
-      ? o.age_targets.map((a) => ({ min: a.min?.toString() ?? '', max: a.max?.toString() ?? '', value: o.category === 'habit' ? dailyText(oh, a.value) : String(a.value) }))
+      ? o.age_targets.map((a) => ({ min: a.min?.toString() ?? '', max: a.max?.toString() ?? '', value: o.category === 'habit' ? dailyText(oh, a.value) : String(a.value), unit: a.unit ?? o.unit ?? 'km' }))
       : [{ min: '', max: '', value: '' }],
   );
   const [err, setErr] = useState<string | null>(null);
@@ -86,8 +86,12 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
     setUnit(u);
     if (metric === 'distance') setTarget(String(DEFAULTS[u].total));
     else setMinKm(String(DEFAULTS[u].perDay));
-    setAgeRows((rs) => (category === 'activity' && metric === 'distance' ? rs.map((r) => ({ ...r, value: '' })) : rs));
+    // Age groups that were following the main unit follow it to the new one.
+    setAgeRows((rs) => rs.map((r) => ((r.unit ?? unit) === unit ? { ...r, unit: u, value: '' } : r)));
   };
+  // Each age group can have its own unit on "Total" goals (e.g. 100 km for most, 10,000 steps for 60+).
+  const rowUnits = category === 'activity' && metric === 'distance';
+  const unitOptions = (Object.keys(UNITS) as DistUnit[]).filter((u) => sport !== 'ride' || UNITS[u].ride).map((u) => ({ value: u, label: UNITS[u].name }));
   // Habits without a daily number (yes/no, weigh-in) can't have age-wise targets.
   const ageAllowed = category === 'activity' || (!!habit && (habit.kind === 'time' || (habit.kind === 'amount' && habit.key !== 'weigh-in')));
 
@@ -129,7 +133,9 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
         if (category === 'activity' && metric === 'days' && v > days) return `Age group ${n}: this challenge has only ${days} days.`;
         const clash = out.findIndex((x) => (x.min ?? 0) <= (hi ?? 999) && (lo ?? 0) <= (x.max ?? 999));
         if (clash >= 0) return `Age groups ${clash + 1} and ${n} overlap. Each age should be in one group only.`;
-        out.push({ min: lo, max: hi, value: v });
+        const ru = rowUnits ? r.unit ?? unit : undefined;
+        if (ru === 'steps' && sport === 'ride') return `Age group ${n}: steps don’t work for cycling.`;
+        out.push(ru && ru !== unit ? { min: lo, max: hi, value: v, unit: ru } : { min: lo, max: hi, value: v });
       }
       base.age_targets = out;
     }
@@ -221,7 +227,7 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
             <div className="field">
               <span className="label">Sport</span>
               <div className="seg">
-                {(Object.keys(SPORTS) as Sport[]).map((k) => <button type="button" key={k} aria-selected={sport === k} onClick={() => { setSport(k); if (k === 'ride' && unit === 'steps') pickUnit('km'); }}>{SPORTS[k].name}</button>)}
+                {(Object.keys(SPORTS) as Sport[]).map((k) => <button type="button" key={k} aria-selected={sport === k} onClick={() => { setSport(k); if (k === 'ride') { if (unit === 'steps') pickUnit('km'); setAgeRows((rs) => rs.map((r) => (r.unit === 'steps' ? { ...r, unit: 'km', value: '' } : r))); } }}>{SPORTS[k].name}</button>)}
               </div>
             </div>
             <div className="field">
@@ -232,17 +238,8 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
                 ))}
               </div>
             </div>
-            <div className="field">
-              <span className="label">Measure in</span>
-              <div className="seg unit-seg">
-                {(Object.keys(UNITS) as DistUnit[]).filter((u) => sport !== 'ride' || UNITS[u].ride).map((u) => (
-                  <button type="button" key={u} aria-selected={unit === u} onClick={() => pickUnit(u)}>{UNITS[u].name}</button>
-                ))}
-              </div>
-              <p className="hint">{unit === 'steps' ? `Strava doesn’t share step counts, so steps are worked out from distance (about ${STEPS_PER_KM[sport].toLocaleString('en-IN')} per km ${sport === 'run' ? 'running' : 'walking'}).`
-                : unit === 'min' ? 'Uses the moving time Strava records for each activity.'
-                : unit === 'mi' ? 'Strava distance shown in miles (1 mile = 1.61 km).' : 'Strava distance in kilometres.'}</p>
-            </div>
+            <Picker label="Measure in" title="Measure in" value={unit} options={unitOptions} search={false} onChange={(v) => pickUnit(v as DistUnit)} />
+            <p className="hint" style={{ marginTop: -8 }}>{unitHint(unit, sport)}</p>
             <div className="grid2">
               <TextField label={metric === 'distance' ? `Total ${uName.long}` : metric === 'days' ? 'Number of days' : 'Number of sessions'} type="number" inputMode="decimal" min="1" value={target} onChange={(e) => setTarget(e.target.value)} />
               {metric !== 'distance' ? (
@@ -294,18 +291,21 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
                         <span className="strong">Age group {i + 1}{r.min || r.max ? <span className="muted"> · {ageRangeText({ min: r.min ? +r.min : null, max: r.max ? +r.max : null })}</span> : null}</span>
                         {ageRows.length > 1 ? <button type="button" className="icon-btn sm" aria-label={`Remove age group ${i + 1}`} onClick={() => setAgeRows((rs) => rs.filter((_, j) => j !== i))}><Icon name="trash" /></button> : null}
                       </div>
-                      <div className="grid3">
+                      <div className="grid2">
                         <TextField label="From age" type="number" inputMode="numeric" placeholder="Any" value={r.min} onChange={(e) => set('min', e.target.value)} />
                         <TextField label="To age" type="number" inputMode="numeric" placeholder="Any" value={r.max} onChange={(e) => set('max', e.target.value)} />
                         {category === 'habit' && habit?.kind === 'time'
                           ? <TextField label={valueLabel} type="time" value={r.value} onChange={(e) => set('value', e.target.value)} />
-                          : <TextField label={valueLabel} type="number" inputMode="decimal" min="0" step={category === 'habit' ? habit?.step ?? 1 : 'any'} value={r.value} onChange={(e) => set('value', e.target.value)} />}
+                          : <TextField label={rowUnits ? `Target (${UNITS[r.unit ?? unit].long})` : valueLabel} type="number" inputMode="decimal" min="0" step={category === 'habit' ? habit?.step ?? 1 : 'any'} value={r.value} onChange={(e) => set('value', e.target.value)} />}
+                        {rowUnits ? <Picker label="Measure in" title={`Age group ${i + 1}: measure in`} value={r.unit ?? unit} options={unitOptions} search={false}
+                          onChange={(v) => setAgeRows((rs) => rs.map((x, j) => (j === i ? { ...x, unit: v as DistUnit, value: x.unit === v ? x.value : '' } : x)))} /> : null}
                       </div>
+                      {rowUnits && (r.unit ?? unit) !== unit ? <p className="hint" style={{ margin: 0 }}>{unitHint(r.unit ?? unit, sport)}</p> : null}
                     </div>
                   );
                 })}
-                <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setAgeRows((rs) => [...rs, { min: '', max: '', value: '' }])}><Icon name="plus" className="ic" />Add age group</button>
-                <p className="hint">Members whose age isn’t in any group, or who haven’t added their birthday, get the normal target above. Age is counted on the start date. Birthdays stay private.</p>
+                <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setAgeRows((rs) => [...rs, { min: '', max: '', value: '', unit }])}><Icon name="plus" className="ic" />Add age group</button>
+                <p className="hint">Members whose age isn’t in any group, or who haven’t added their birthday, get the normal target above. Age is counted on the start date. Birthdays stay private.{rowUnits ? ' When groups use different units, the leaderboard ranks everyone by how much of their own goal they’ve done.' : ''}</p>
               </div>
             ) : null}
           </>
@@ -393,6 +393,13 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
   );
 }
 
+function unitHint(u: DistUnit, sport: Sport): string {
+  if (u === 'steps') return `Strava doesn’t share step counts, so steps are worked out from distance (about ${STEPS_PER_KM[sport].toLocaleString('en-IN')} per km ${sport === 'run' ? 'running' : 'walking'}).`;
+  if (u === 'min') return 'Uses the moving time Strava records for each activity.';
+  if (u === 'mi') return 'Strava distance in miles (1 mile = 1.61 km).';
+  return 'Strava distance in kilometres.';
+}
+
 function PreviewCard({ c }: { c: NewChallenge }) {
   const full = { ...c, id: 'preview', cancelled: false, created_at: '', member_count: 0, joined: false, my_daily_target: null, my_reminder: null, eligible: true };
   const look = lookOf(full);
@@ -408,7 +415,7 @@ function PreviewCard({ c }: { c: NewChallenge }) {
       </div>
       <p className="small" style={{ color: 'var(--ink-2)' }}>{goalText(full)}{h ? ` · ${habitGoalText(h, c.daily_target ?? h.goal ?? 0)}` : ''}</p>
       {hasAudience(c) ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="users" />Only for: {audienceText(c)}</span> : null}
-      {c.age_targets?.length ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="user" />Target by age: {c.age_targets.map((a) => ageRangeText(a)).join(', ')}</span> : null}
+      {c.age_targets?.length ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="user" />Target by age: {c.age_targets.map((a) => `${ageRangeText(a)}${a.unit ? ` (${UNITS[a.unit].long})` : ''}`).join(', ')}</span> : null}
     </div>
   );
 }
