@@ -11,12 +11,24 @@ export function watchKeyboard(): void {
   update();
 }
 
-/** When a field gets focus behind the keyboard, bring it into view. */
+/**
+ * When a field gets focus behind the keyboard, bring it into view.
+ * Only fields that open the keyboard, and only if the keyboard actually covers them: moving the page
+ * while a date / time picker or a dropdown is open makes the phone close that picker again
+ * (it looked like the picker "stretched and shut" the first time it was opened).
+ */
+const NO_KEYBOARD = 'input[type="date"], input[type="time"], input[type="datetime-local"], input[type="month"], input[type="week"], input[type="checkbox"], input[type="radio"], input[type="range"], input[type="color"], input[type="file"], select';
 export function keepFocusedFieldVisible(): void {
   document.addEventListener('focusin', (e) => {
     const t = e.target as HTMLElement;
-    if (!t.matches?.('input, textarea, select')) return;
-    setTimeout(() => t.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+    if (!t.matches?.('input, textarea') || t.matches(NO_KEYBOARD)) return;
+    setTimeout(() => {
+      if (document.activeElement !== t) return;
+      const vv = window.visualViewport;
+      const r = t.getBoundingClientRect();
+      const bottom = vv ? vv.offsetTop + vv.height : window.innerHeight;
+      if (r.bottom > bottom - 12 || r.top < (vv?.offsetTop ?? 0) + 8) t.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }, 300);
   });
 }
 

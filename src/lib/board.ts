@@ -2,6 +2,7 @@ import type { Challenge, Participant } from './types';
 import { progress, totalDays } from './progress';
 import { habitByKey, fmtAmount } from './habits';
 import { addDays, today } from './dates';
+import { withBand } from './agetargets';
 
 /** Leaderboards only where "more" is genuinely better: all exercise challenges and selected habits (steps, push-ups, yoga minutes…). */
 export function hasBoard(c: Challenge): boolean {
@@ -15,7 +16,9 @@ export function rankBoard(c: Challenge, ps: Participant[], meId: string | null):
   const h = habitByKey(c.habit_key);
   const t = today();
   return ps.map((p) => {
-    const pr = progress({ ...c, joined: true }, p.activities, p.logs);
+    // Each member against their own age group's target (the signed-in member's challenge is already theirs).
+    const pc = p.user_id === meId ? c : withBand(c, p.band);
+    const pr = progress({ ...pc, joined: true }, p.activities, p.logs);
     let value = pr.value, label = '';
     if (c.category === 'activity') {
       label = c.metric === 'distance' ? `${value.toFixed(2)} km` : c.metric === 'days' ? `${value} days` : `${value} ${c.sport === 'ride' ? 'rides' : c.sport === 'run' ? 'runs' : 'walks'}`;

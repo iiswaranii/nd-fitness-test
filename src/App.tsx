@@ -166,6 +166,7 @@ function memberRoutes(main: boolean) {
         <Route path="/admin" element={<AdminOnly><AdminHome /></AdminOnly>} />
         <Route path="/admin/new" element={<AdminOnly><CreateChallenge /></AdminOnly>} />
         <Route path="/admin/c/:id" element={<AdminOnly><AdminChallenge /></AdminOnly>} />
+        <Route path="/admin/c/:id/edit" element={<AdminOnly><CreateChallenge /></AdminOnly>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
   );

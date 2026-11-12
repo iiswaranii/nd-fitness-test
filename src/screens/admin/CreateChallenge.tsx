@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ageRangeText, baseOf, type AgeTarget } from '../../lib/agetargets';
+import type { Challenge } from '../../lib/types';
 import { Screen } from '../../components/Screen';
 import { Button, ErrorText, TextField } from '../../components/Form';
 import { Icon } from '../../components/Icon';
@@ -24,36 +26,60 @@ const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')
 const START_TIMES = HOURS.map((v) => ({ value: v, label: clock12(v) }));
 const END_TIMES = [...HOURS.slice(1), '23:59'].map((v) => ({ value: v, label: clock12(v) }));
 
+type AgeRow = { min: string; max: string; value: string };
+
+/** New challenge, or (at /admin/c/:id/edit) edit an existing one. Any admin can edit any challenge. */
 export default function CreateChallenge() {
+  const { id: editId } = useParams();
+  const { allChallenges } = useStore();
+  const found = editId ? allChallenges.find((x) => x.id === editId) : undefined;
+  if (editId && !found) return <Screen back><p className="muted">Challenge not found.</p></Screen>;
+  return <ChallengeForm key={editId ?? 'new'} orig={found ? baseOf(found) : undefined} />;
+}
+
+function ChallengeForm({ orig }: { orig?: Challenge }) {
   const nav = useNavigate();
   const toast = useToast();
   const { reload } = useStore();
   const t = today();
+  const o = orig;
+  const oh = o ? habitByKey(o.habit_key) ?? null : null;
+  const dailyText = (h: Habit | null, v: number | null | undefined) => (h && v !== null && v !== undefined ? (h.kind === 'time' ? toHHMM(v) : String(v)) : '');
 
-  const [category, setCategory] = useState<Category>('activity');
-  const [title, setTitle] = useState('');
-  const [desc, setDesc] = useState('');
-  const [sport, setSport] = useState<Sport>('walk');
-  const [metric, setMetric] = useState<Metric>('distance');
-  const [target, setTarget] = useState('50');
-  const [minKm, setMinKm] = useState('3');
-  const [habit, setHabit] = useState<Habit | null>(null);
-  const [daily, setDaily] = useState('');
-  const [start, setStart] = useState(t);
-  const [end, setEnd] = useState(addDays(t, 29));
-  const [regOpens, setRegOpens] = useState(t);
-  const [joinBy, setJoinBy] = useState(addDays(t, 7));
-  const [startTime, setStartTime] = useState('00:00');
-  const [endTime, setEndTime] = useState('23:59');
+  const [category, setCategory] = useState<Category>(o?.category ?? 'activity');
+  const [title, setTitle] = useState(o?.title ?? '');
+  const [desc, setDesc] = useState(o?.description ?? '');
+  const [sport, setSport] = useState<Sport>(o?.sport ?? 'walk');
+  const [metric, setMetric] = useState<Metric>(o?.metric ?? 'distance');
+  const [target, setTarget] = useState(o && o.category === 'activity' ? String(o.target) : '50');
+  const [minKm, setMinKm] = useState(String(o?.daily_min ?? o?.min_km ?? 3));
+  const [habit, setHabit] = useState<Habit | null>(oh);
+  const [daily, setDaily] = useState(dailyText(oh, o?.daily_target));
+  const [start, setStart] = useState(o?.start_date ?? t);
+  const [end, setEnd] = useState(o?.end_date ?? addDays(t, 29));
+  const [regOpens, setRegOpens] = useState(o?.reg_opens ?? t);
+  const [joinBy, setJoinBy] = useState(o?.join_by ?? addDays(t, 7));
+  const [startTime, setStartTime] = useState((o?.start_time ?? '00:00').slice(0, 5));
+  const [endTime, setEndTime] = useState((o?.end_time ?? '23:59').slice(0, 5));
   // Optional audience — hidden until switched on.
-  const [limit, setLimit] = useState(false);
-  const [ageOn, setAgeOn] = useState(false);
-  const [minAge, setMinAge] = useState('');
-  const [maxAge, setMaxAge] = useState('');
-  const [countries, setCountries] = useState<string[]>([]);
-  const [states, setStates] = useState<string[]>([]);
+  const [limit, setLimit] = useState(o ? hasAudience(o) : false);
+  const [ageOn, setAgeOn] = useState(o ? o.aud_min_age !== null || o.aud_max_age !== null : false);
+  const [minAge, setMinAge] = useState(o?.aud_min_age?.toString() ?? '');
+  const [maxAge, setMaxAge] = useState(o?.aud_max_age?.toString() ?? '');
+  const [countries, setCountries] = useState<string[]>(o?.aud_countries ?? []);
+  const [states, setStates] = useState<string[]>(o?.aud_states ?? []);
+  // Age-wise targets — a different target for each age group the admin defines.
+  const [byAge, setByAge] = useState(!!o?.age_targets?.length);
+  const [ageRows, setAgeRows] = useState<AgeRow[]>(
+    o?.age_targets?.length
+      ? o.age_targets.map((a) => ({ min: a.min?.toString() ?? '', max: a.max?.toString() ?? '', value: o.category === 'habit' ? dailyText(oh, a.value) : String(a.value) }))
+      : [{ min: '', max: '', value: '' }],
+  );
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const editing = !!o;
+  // Habits without a daily number (yes/no, weigh-in) can't have age-wise targets.
+  const ageAllowed = category === 'activity' || (!!habit && (habit.kind === 'time' || (habit.kind === 'amount' && habit.key !== 'weigh-in')));
 
   const days = Math.max(1, diffDays(start, end) + 1);
 
@@ -74,10 +100,29 @@ export default function CreateChallenge() {
       start_date: start, end_date: end, reg_opens: regOpens, join_by: joinBy,
       start_time: category === 'activity' ? startTime : '00:00', end_time: category === 'activity' ? endTime : '23:59',
       // Exact moments in UTC: registration opens at the start of that day, closes at 11:59 pm — in the admin's time zone.
-      reg_opens_at: regOpens === today() ? new Date().toISOString() : localDayStartIso(regOpens), join_by_at: localDayEndIso(joinBy),
+      reg_opens_at: o && o.reg_opens === regOpens && o.reg_opens_at ? o.reg_opens_at : regOpens === today() ? new Date().toISOString() : localDayStartIso(regOpens),
+      join_by_at: o && o.join_by === joinBy && o.join_by_at ? o.join_by_at : localDayEndIso(joinBy),
       sport: null, metric: null, daily_min: null, min_km: null, habit_key: null, daily_target: null,
-      aud_min_age: null, aud_max_age: null, aud_countries: null, aud_states: null,
+      aud_min_age: null, aud_max_age: null, aud_countries: null, aud_states: null, age_targets: null,
     } as NewChallenge;
+    if (byAge && ageAllowed) {
+      const out: AgeTarget[] = [];
+      for (const [i, r] of ageRows.entries()) {
+        const n = i + 1;
+        const lo = r.min.trim() ? parseInt(r.min, 10) : null, hi = r.max.trim() ? parseInt(r.max, 10) : null;
+        if (lo === null && hi === null) return `Age group ${n}: enter a “from” age, a “to” age, or both.`;
+        if ((lo !== null && (lo < 1 || lo > 120)) || (hi !== null && (hi < 1 || hi > 120))) return `Age group ${n}: ages should be between 1 and 120.`;
+        if (lo !== null && hi !== null && lo > hi) return `Age group ${n}: the “from” age must not be above the “to” age.`;
+        let v: number;
+        if (category === 'habit' && habit?.kind === 'time') { if (!r.value) return `Age group ${n}: set the target time.`; v = fromHHMM(r.value); }
+        else { v = parseFloat(r.value); if (!(v > 0)) return `Age group ${n}: set a target above zero.`; }
+        if (category === 'activity' && metric === 'days' && v > days) return `Age group ${n}: this challenge has only ${days} days.`;
+        const clash = out.findIndex((x) => (x.min ?? 0) <= (hi ?? 999) && (lo ?? 0) <= (x.max ?? 999));
+        if (clash >= 0) return `Age groups ${clash + 1} and ${n} overlap. Each age should be in one group only.`;
+        out.push({ min: lo, max: hi, value: v });
+      }
+      base.age_targets = out;
+    }
     if (limit) {
       const lo = ageOn && minAge ? parseInt(minAge, 10) : null, hi = ageOn && maxAge ? parseInt(maxAge, 10) : null;
       if (lo !== null && (lo < 5 || lo > 110)) return 'Minimum age should be between 5 and 110.';
@@ -106,7 +151,7 @@ export default function CreateChallenge() {
     const r = build();
     return typeof r === 'string' ? null : r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, title, desc, sport, metric, target, minKm, habit, daily, start, end, startTime, endTime, regOpens, joinBy, limit, ageOn, minAge, maxAge, countries, states]);
+  }, [category, title, desc, sport, metric, target, minKm, habit, daily, start, end, startTime, endTime, regOpens, joinBy, limit, ageOn, minAge, maxAge, countries, states, byAge, ageRows]);
 
   return (
     <Screen back>
@@ -116,6 +161,13 @@ export default function CreateChallenge() {
         if (typeof r === 'string') { setErr(r); return; }
         setBusy(true); setErr(null);
         try {
+          if (o) {
+            await data.updateChallenge(o.id, r);
+            await reload();
+            toast('Changes saved · members see them now');
+            nav(-1);
+            return;
+          }
           const id = await data.createChallenge(r);
           // Phone notification to members who allow new-challenge alerts. Publishing succeeds even if this fails.
           const sent = await data.announceChallenge(id).then((x) => x.sent).catch(() => 0);
@@ -126,7 +178,10 @@ export default function CreateChallenge() {
         catch (e2) { setErr(friendlyError(e2)); }
         finally { setBusy(false); }
       }}>
-        <div className="stack tight"><p className="eyebrow">Admin</p><h1 className="h1">New challenge</h1></div>
+        <div className="stack tight"><p className="eyebrow">Admin</p><h1 className="h1">{editing ? 'Edit challenge' : 'New challenge'}</h1></div>
+        {editing && o!.member_count ? (
+          <p className="note-warn"><Icon name="info" />{o!.member_count} {o!.member_count === 1 ? 'member has' : 'members have'} joined. Changes apply to them straight away; progress is worked out again with the new rules.</p>
+        ) : null}
 
         <section className="form-sec">
         <div className="form-sec-h"><span className="num">1</span><h2 className="h2">What kind of challenge?</h2></div>
@@ -195,6 +250,44 @@ export default function CreateChallenge() {
             <p className="hint">A day counts when the member reaches the daily goal. Progress is days completed out of all {days} days of the challenge.</p>
           </>
         )}
+        {ageAllowed ? (
+          <>
+            <label className="card row" style={{ gap: 12, padding: 14 }} htmlFor="byage-on">
+              <span className="grow" style={{ minWidth: 0 }}>
+                <span className="strong" style={{ display: 'block' }}>Different target by age</span>
+                <span className="small muted">{byAge ? 'Each member gets the target for their age group.' : 'Off: one target for everyone.'}</span>
+              </span>
+              <input id="byage-on" type="checkbox" className="sw" checked={byAge} onChange={(e) => setByAge(e.target.checked)} />
+            </label>
+            {byAge ? (
+              <div className="card stack age-rows">
+                {ageRows.map((r, i) => {
+                  const set = (k: keyof AgeRow, v: string) => setAgeRows((rs) => rs.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
+                  const valueLabel = category === 'habit'
+                    ? habit?.kind === 'time' ? 'Target time' : `Daily ${habit?.dir === 'atMost' ? 'limit' : 'target'} (${habit?.unit ?? ''})`
+                    : metric === 'distance' ? 'Total km' : metric === 'days' ? 'Days' : 'Sessions';
+                  return (
+                    <div key={i} className="age-row">
+                      <div className="age-row-h">
+                        <span className="strong">Age group {i + 1}{r.min || r.max ? <span className="muted"> · {ageRangeText({ min: r.min ? +r.min : null, max: r.max ? +r.max : null })}</span> : null}</span>
+                        {ageRows.length > 1 ? <button type="button" className="icon-btn sm" aria-label={`Remove age group ${i + 1}`} onClick={() => setAgeRows((rs) => rs.filter((_, j) => j !== i))}><Icon name="trash" /></button> : null}
+                      </div>
+                      <div className="grid3">
+                        <TextField label="From age" type="number" inputMode="numeric" placeholder="Any" value={r.min} onChange={(e) => set('min', e.target.value)} />
+                        <TextField label="To age" type="number" inputMode="numeric" placeholder="Any" value={r.max} onChange={(e) => set('max', e.target.value)} />
+                        {category === 'habit' && habit?.kind === 'time'
+                          ? <TextField label={valueLabel} type="time" value={r.value} onChange={(e) => set('value', e.target.value)} />
+                          : <TextField label={valueLabel} type="number" inputMode="decimal" min="0" step={category === 'habit' ? habit?.step ?? 1 : 'any'} value={r.value} onChange={(e) => set('value', e.target.value)} />}
+                      </div>
+                    </div>
+                  );
+                })}
+                <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setAgeRows((rs) => [...rs, { min: '', max: '', value: '' }])}><Icon name="plus" className="ic" />Add age group</button>
+                <p className="hint">Members whose age isn’t in any group, or who haven’t added their birthday, get the normal target above. Age is counted on the start date. Birthdays stay private.</p>
+              </div>
+            ) : null}
+          </>
+        ) : null}
         </section>
 
         <section className="form-sec">
@@ -272,7 +365,7 @@ export default function CreateChallenge() {
         ) : null}
 
         <ErrorText>{err}</ErrorText>
-        <Button type="submit" loading={busy}>Publish challenge</Button>
+        <Button type="submit" loading={busy}>{editing ? 'Save changes' : 'Publish challenge'}</Button>
       </form>
     </Screen>
   );
@@ -293,6 +386,7 @@ function PreviewCard({ c }: { c: NewChallenge }) {
       </div>
       <p className="small" style={{ color: 'var(--ink-2)' }}>{goalText(full)}{h ? ` · ${habitGoalText(h, c.daily_target ?? h.goal ?? 0)}` : ''}</p>
       {hasAudience(c) ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="users" />Only for: {audienceText(c)}</span> : null}
+      {c.age_targets?.length ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="user" />Target by age: {c.age_targets.map((a) => ageRangeText(a)).join(', ')}</span> : null}
     </div>
   );
 }

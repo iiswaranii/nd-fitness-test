@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Page } from '../components/Page';
 import { Avatar } from '../components/Avatar';
 import { Button } from '../components/Form';
+import { EmptyState } from '../components/EmptyState';
 import { Icon } from '../components/Icon';
 import { Rings } from '../components/Ring';
 import { PullToRefresh, RefreshButton } from '../components/PullToRefresh';
@@ -68,22 +69,16 @@ export default function Today() {
           {heroes.length ? (
             <ProgressCarousel items={heroes} onOpenHabit={setLogFor} />
           ) : !loading ? (
-            <div className="card empty">
-              <Icon name="trophy" />
-              {isAdmin && !challenges.length ? (
-                <>
-                  <p className="strong">Create the first challenge</p>
-                  <p className="small muted">Nothing here yet. Members will see it as soon as you publish it.</p>
-                  <Button style={{ width: 'auto' }} onClick={() => nav('/admin/new')}>Create a challenge</Button>
-                </>
-              ) : (
-                <>
-                  <p className="strong">No active challenge yet</p>
-                  <p className="small muted">{challenges.length ? 'Join a challenge to see your progress rings here.' : 'New challenges will show up here. We’ll let you know.'}</p>
-                  {challenges.length ? <Button style={{ width: 'auto' }} onClick={() => nav('/challenges?tab=open')}>Find a challenge</Button> : null}
-                </>
-              )}
-            </div>
+            isAdmin && !challenges.length ? (
+              <EmptyState icon="plus" title="Create the first challenge" text="Nothing here yet. Members will see it as soon as you publish it." quote={false}>
+                <Button style={{ width: 'auto' }} onClick={() => nav('/admin/new')}>Create a challenge</Button>
+              </EmptyState>
+            ) : (
+              <EmptyState icon="trophy" title={challenges.some((c) => !c.joined && canJoin(c)) ? 'Ready when you are' : 'New challenges are coming soon'}
+                text={challenges.some((c) => !c.joined && canJoin(c)) ? 'Join a challenge and your progress rings show up here every day.' : 'Your admins are planning the next one. We’ll let you know the moment it opens.'}>
+                {challenges.some((c) => !c.joined && canJoin(c)) ? <Button style={{ width: 'auto' }} onClick={() => nav('/challenges?tab=open')}>Find a challenge</Button> : null}
+              </EmptyState>
+            )
           ) : null}
 
           {exercise.length || habits.length ? (

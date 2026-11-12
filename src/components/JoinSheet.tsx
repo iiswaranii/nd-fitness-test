@@ -13,6 +13,8 @@ import { habitByKey, habitGoalText } from '../lib/habits';
 import { friendlyError } from '../lib/errors';
 import type { Challenge } from '../lib/types';
 import { enablePush, pushState } from '../lib/push';
+import { TERMS_VERSION, TermsStep } from './Terms';
+import { ageRangeText } from '../lib/agetargets';
 
 const KM_TARGETS = [0, 2, 3, 5, 8];
 
@@ -24,10 +26,33 @@ export function JoinSheet({ c, onClose, onJoined }: { c: Challenge | null; onClo
   const [rem, setRem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { setRem(null); setT(0); setErr(null); }, [c?.id]);
+  const [step, setStep] = useState<'options' | 'terms'>('options');
+  useEffect(() => { setRem(null); setT(0); setErr(null); setStep('options'); }, [c?.id]);
   if (!c) return null;
   const look = lookOf(c);
   const h = habitByKey(c.habit_key);
+  const band = c.my_band !== null && c.my_band !== undefined ? c.age_targets?.[c.my_band] : null;
+  const join = async () => {
+    setBusy(true); setErr(null);
+    try {
+      const reminder = (rem ?? (c.category === 'habit' ? '20:00' : '')) || null;
+      // Ask for notification permission first, while we still have the tap.
+      if (reminder && (await pushState()) === 'off') await enablePush().catch(() => null);
+      await data.join(c.id, c.category === 'activity' && t ? t : null, reminder, TERMS_VERSION);
+      await reload();
+      toast(`You joined ${c.title}`);
+      onJoined?.(c);
+      onClose();
+    } catch (e) { setErr(friendlyError(e)); setStep('options'); }
+    finally { setBusy(false); }
+  };
+  if (step === 'terms') {
+    return (
+      <Sheet open={!!c} onClose={onClose} label={`Terms for ${c.title}`}>
+        <div style={{ ['--c' as string]: look.color }}><TermsStep title={c.title} busy={busy} onAgree={join} onBack={() => setStep('options')} /></div>
+      </Sheet>
+    );
+  }
   return (
     <Sheet open={!!c} onClose={onClose} label={`Join ${c.title}`}>
       <div className="stack" style={{ ['--c' as string]: look.color }}>
@@ -36,6 +61,7 @@ export function JoinSheet({ c, onClose, onJoined }: { c: Challenge | null; onClo
           <p className="eyebrow">Join challenge</p>
           <h2 className="h1" style={{ fontSize: 26 }}>{c.title}</h2>
           <p className="lead">{goalText(c)} · {fmtWindow(c)}</p>
+          {band ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="user" />Goal set for your age group ({ageRangeText(band)})</span> : null}
         </div>
         {c.category === 'activity' ? (
           <div className="card stack tight">
@@ -61,26 +87,7 @@ export function JoinSheet({ c, onClose, onJoined }: { c: Challenge | null; onClo
           <ReminderPicker title="Remind me at" value={rem ?? (c.category === 'habit' ? '20:00' : '')} onChange={(v) => setRem(v)} />
         </div>
         <ErrorText>{err}</ErrorText>
-        <Button
-          className="tint"
-          loading={busy}
-          onClick={async () => {
-            setBusy(true); setErr(null);
-            try {
-              const reminder = (rem ?? (c.category === 'habit' ? '20:00' : '')) || null;
-              // Ask for notification permission first, while we still have the tap.
-              if (reminder && (await pushState()) === 'off') await enablePush().catch(() => null);
-              await data.join(c.id, c.category === 'activity' && t ? t : null, reminder);
-              await reload();
-              toast(`You joined ${c.title}`);
-              onJoined?.(c);
-              onClose();
-            } catch (e) { setErr(friendlyError(e)); }
-            finally { setBusy(false); }
-          }}
-        >
-          Join challenge
-        </Button>
+        <Button className="tint" onClick={() => { setErr(null); setStep('terms'); }}>Continue</Button>
         <p className="legal">{c.member_count} {c.member_count === 1 ? 'member has' : 'members have'} joined · join by {joinByText(c)}</p>
       </div>
     </Sheet>

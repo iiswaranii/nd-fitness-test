@@ -3,13 +3,18 @@ import { DEMO_AUTH } from './config';
 import { auth, demoAllProfiles, demoLinkStrava, demoLinkStravaProfile } from './auth';
 import { today } from './dates';
 import { ageBand, ageOn, matches } from './audience';
+import { bandFor, withBand } from './agetargets';
 import { SPORTS, type Activity, type Challenge, type HabitLog, type Health, type MemberStat, type NewChallenge, type Participant, type Sport } from './types';
 
 export interface DataApi {
   listChallenges(): Promise<Challenge[]>;
   createChallenge(c: NewChallenge): Promise<string>;
+  /** Any admin can edit any challenge. */
+  updateChallenge(id: string, c: Partial<NewChallenge>): Promise<void>;
+  /** Delete (cancel) — only the admin who created it. */
   cancelChallenge(id: string): Promise<void>;
-  join(id: string, myDailyTarget: number | null, reminder?: string | null): Promise<void>;
+  /** Join; terms = the version of the terms the member accepted (required). */
+  join(id: string, myDailyTarget: number | null, reminder: string | null, terms: string): Promise<void>;
   setReminder(id: string, time: string | null): Promise<void>;
   /** Phone notifications: store or remove this device's push subscription. */
   savePushSubscription(sub: PushSubscriptionJSON, tz: string): Promise<void>;
@@ -116,14 +121,23 @@ async function invoke(fn: string, body: Record<string, unknown>) {
   return r;
 }
 
+/** Each member's age group for age-wise targets (only the group, never an age). Empty if not available. */
+async function bandsOf(cid: string): Promise<Map<string, number | null>> {
+  const { data, error } = await sb().rpc('challenge_target_bands', { cid });
+  if (error) return new Map();
+  return new Map(((data ?? []) as { user_id: string; band: number | null }[]).map((r) => [r.user_id, r.band]));
+}
+
 const supabaseData: DataApi = {
   async listChallenges() {
     const me = await uid();
-    const [{ data: cs, error }, { data: counts }, { data: mine }] = await Promise.all([
+    const [{ data: cs, error }, { data: counts }, { data: mine }, { data: hl }] = await Promise.all([
       sb().from('challenges').select('*, eligible:member_can_see').order('start_date', { ascending: false }),
       sb().rpc('challenge_member_counts'),
       sb().from('challenge_members').select('challenge_id, daily_target, reminder_time, joined_at').eq('user_id', me),
+      sb().from('profile_health').select('dob').eq('user_id', me).maybeSingle(),
     ]);
+    const dob = (hl as { dob?: string | null } | null)?.dob ?? null;
     if (error) throw error;
     const cnt = new Map((counts ?? []).map((r: { challenge_id: string; members: number }) => [r.challenge_id, r.members]));
     const my = new Map((mine ?? []).map((r: { challenge_id: string; daily_target: number | null; reminder_time: string | null; joined_at?: string | null }) => [r.challenge_id, r]));
@@ -133,19 +147,25 @@ const supabaseData: DataApi = {
       daily_target: c.daily_target === null ? null : Number(c.daily_target),
       eligible: c.eligible !== false,
       member_count: Number(cnt.get(c.id) ?? 0), joined: my.has(c.id), my_daily_target: my.get(c.id)?.daily_target ?? null, my_reminder: my.get(c.id)?.reminder_time?.slice(0, 5) ?? null, my_joined_at: my.get(c.id)?.joined_at ?? null,
-    })) as Challenge[];
+    } as Challenge)).map((c) => withBand(c, bandFor(c, dob)));
   },
   async createChallenge(c) {
     const { data: row, error } = await sb().from('challenges').insert({ ...c, created_by: await uid() }).select('id').single();
     if (error) throw error;
     return row.id as string;
   },
-  async cancelChallenge(id) {
-    const { error } = await sb().from('challenges').update({ cancelled: true }).eq('id', id);
+  async updateChallenge(id, c) {
+    const { data: rows, error } = await sb().from('challenges').update(c).eq('id', id).select('id');
     if (error) throw error;
+    if (!rows?.length) throw new Error('Only admins can edit challenges.');
   },
-  async join(id, t, reminder = null) {
-    const { error } = await sb().from('challenge_members').insert({ challenge_id: id, user_id: await uid(), daily_target: t, reminder_time: reminder });
+  async cancelChallenge(id) {
+    const { data: rows, error } = await sb().from('challenges').update({ cancelled: true }).eq('id', id).select('id');
+    if (error) throw error;
+    if (!rows?.length) throw new Error('Only the admin who created this challenge can delete it.');
+  },
+  async join(id, t, reminder, terms) {
+    const { error } = await sb().from('challenge_members').insert({ challenge_id: id, user_id: await uid(), daily_target: t, reminder_time: reminder, terms_version: terms });
     if (error) throw error;
   },
   async setReminder(id, time) {
@@ -224,9 +244,10 @@ const supabaseData: DataApi = {
     if (error) throw error;
     const ids = (members ?? []).map((m) => m.user_id);
     if (!ids.length) return [];
-    const [{ data: acts }, { data: logs }] = await Promise.all([
+    const [{ data: acts }, { data: logs }, bands] = await Promise.all([
       sb().from('activities').select('*').in('user_id', ids),
       sb().from('habit_logs').select('user_id, challenge_id, day, value, entries').eq('challenge_id', challengeId),
+      bandsOf(challengeId),
     ]);
     return (members ?? []).map((m) => {
       const p = (Array.isArray(m.profiles) ? m.profiles[0] : m.profiles) as { full_name: string | null; city: string | null; country: string | null; strava_connected: boolean } | null;
@@ -239,14 +260,15 @@ const supabaseData: DataApi = {
         joined_at: m.joined_at,
         activities: ((acts ?? []) as (ActRow & { user_id: string })[]).filter((a) => a.user_id === m.user_id).map(toAct),
         logs: (logs ?? []).filter((l) => l.user_id === m.user_id).map((l) => ({ challenge_id: l.challenge_id, date: l.day, value: Number(l.value), entries: (l.entries ?? []).map(Number) })),
+        band: bands.get(m.user_id) ?? null,
       };
     });
   },
   async board(challengeId) {
-    const { data, error } = await sb().rpc('challenge_board', { cid: challengeId });
+    const [{ data, error }, bands] = await Promise.all([sb().rpc('challenge_board', { cid: challengeId }), bandsOf(challengeId)]);
     if (error) throw error;
     return (data ?? []).map((r: { user_id: string; name: string; city: string | null; country: string | null; tz?: string | null; activities: Activity[]; logs: HabitLog[] }) => ({
-      user_id: r.user_id, name: r.name, city: r.city, country: r.country ?? null, tz: r.tz ?? null, strava_connected: true, joined_at: '',
+      user_id: r.user_id, name: r.name, city: r.city, country: r.country ?? null, tz: r.tz ?? null, strava_connected: true, joined_at: '', band: bands.get(r.user_id) ?? null,
       activities: (r.activities ?? []).map((a) => ({ ...a, km: Number(a.km) })),
       logs: (r.logs ?? []).map((l) => ({ ...l, value: Number(l.value) })),
     }));
@@ -315,25 +337,37 @@ const demoData: DataApi = {
       .map((c) => {
       const ms = s.members[c.id] ?? [];
       const mine = ms.find((x) => x.user_id === m.id);
-      return { ...c, eligible: matches(c as Challenge, who), member_count: ms.length, joined: !!mine, my_daily_target: mine?.daily_target ?? null, my_reminder: mine?.reminder ?? null, my_joined_at: mine?.joined_at ?? null };
+      const full = { ...c, eligible: matches(c as Challenge, who), member_count: ms.length, joined: !!mine, my_daily_target: mine?.daily_target ?? null, my_reminder: mine?.reminder ?? null, my_joined_at: mine?.joined_at ?? null } as Challenge;
+      return withBand(full, bandFor(full, who.dob));
     }).sort((a, b) => b.start_date.localeCompare(a.start_date));
   },
   async createChallenge(c) {
     await wait(400);
     const s = load();
     const id = 'c-' + Math.random().toString(36).slice(2, 9);
-    s.challenges.push({ ...c, id, cancelled: false, created_at: new Date().toISOString() });
+    s.challenges.push({ ...c, id, cancelled: false, created_at: new Date().toISOString(), created_by: (await me()).id });
     s.members[id] = [];
     save(s);
     return id;
   },
-  async cancelChallenge(id) {
-    const s = load(); const c = s.challenges.find((x) => x.id === id); if (c) c.cancelled = true; save(s);
-  },
-  async join(id, t, reminder = null) {
+  async updateChallenge(id, c) {
     await wait(300);
     const s = load(), m = await me();
-    (s.members[id] ??= []).push({ user_id: m.id, name: m.name, city: m.city, daily_target: t, joined_at: today(), reminder });
+    if (!m.admin) throw new Error('Only admins can edit challenges.');
+    const i = s.challenges.findIndex((x) => x.id === id);
+    if (i >= 0) s.challenges[i] = { ...s.challenges[i], ...c };
+    save(s);
+  },
+  async cancelChallenge(id) {
+    const s = load(), m = await me(); const c = s.challenges.find((x) => x.id === id);
+    if (c && c.created_by && c.created_by !== m.id) throw new Error('Only the admin who created this challenge can delete it.');
+    if (c) c.cancelled = true; save(s);
+  },
+  async join(id, t, reminder, terms) {
+    await wait(300);
+    if (!terms) throw new Error('Please accept the terms to join.');
+    const s = load(), m = await me();
+    (s.members[id] ??= []).push({ user_id: m.id, name: m.name, city: m.city, daily_target: t, joined_at: today(), reminder, terms, terms_at: new Date().toISOString() } as never);
     save(s);
   },
   async setReminder(id, time) {
@@ -413,6 +447,7 @@ const demoData: DataApi = {
       strava_connected: x.user_id === m.id ? m.strava : true, joined_at: x.joined_at,
       activities: s.activities[x.user_id] ?? [],
       logs: (s.logs[x.user_id] ?? []).filter((l) => l.challenge_id === cid),
+      band: (() => { const c = s.challenges.find((y) => y.id === cid); return c ? bandFor(c as Challenge, s.health?.[x.user_id]?.dob) : null; })(),
     }));
   },
   async board(cid) {

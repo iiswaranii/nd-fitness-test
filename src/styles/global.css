@@ -940,3 +940,61 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 
 /* Dual pane: the challenge open on the right is marked in the list on the left. */
 .cc.sel { box-shadow: 0 0 0 2px var(--c, var(--brand)), 0 8px 24px -12px color-mix(in srgb, var(--c, var(--brand)) 60%, transparent); }
+
+/* ---------- terms before joining ---------- */
+.terms-box { max-height: min(46vh, 420px); overflow-y: auto; overscroll-behavior: contain; display: grid; gap: 10px; padding: 12px; border-radius: 18px;
+  background: var(--surface-2); border: 1px solid var(--line); -webkit-overflow-scrolling: touch; }
+.terms-box:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.term { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; align-items: start; padding: 12px; border-radius: 14px; background: var(--surface); }
+.term b { display: block; font-size: 14.5px; margin-bottom: 2px; }
+.term p { margin: 0; font-size: 13.5px; line-height: 1.45; color: var(--ink-2); }
+.term-ic { width: 36px; height: 36px; border-radius: 11px; display: grid; place-items: center; background: color-mix(in srgb, var(--tc) 14%, transparent); color: var(--tc); }
+.term-ic svg { width: 19px; height: 19px; }
+.term.warn { --tc: var(--warn, #E8890C); box-shadow: inset 3px 0 0 var(--tc); }
+.term.info { --tc: var(--c, var(--brand)); }
+.term.good { --tc: var(--good); }
+.term-end { display: flex; align-items: center; justify-content: center; gap: 6px; margin: 4px 0 2px; font-size: 13px; font-weight: 700; color: var(--good); }
+.term-end svg { width: 16px; height: 16px; }
+.terms-hint { display: flex; align-items: center; justify-content: center; gap: 4px; margin-top: -6px; }
+.terms-hint .ic { width: 16px; height: 16px; transform: rotate(90deg); animation: nudge-down 1.4s ease-in-out infinite; }
+@keyframes nudge-down { 50% { transform: rotate(90deg) translateX(3px); } }
+.terms-agree { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; font-size: 14px; font-weight: 600; line-height: 1.4; cursor: pointer; }
+.terms-agree input { width: 22px; height: 22px; margin: 1px 0 0; accent-color: var(--c, var(--brand)); }
+.terms-agree.off { opacity: .45; cursor: default; }
+@media (prefers-reduced-motion: reduce) { .terms-hint .ic { animation: none; } }
+
+/* ---------- admin: edit + age-wise targets ---------- */
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.grid3 .label, .grid3 label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.age-rows { gap: 14px; }
+.age-row { display: grid; gap: 8px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.age-row-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; }
+.icon-btn.sm { width: 34px; height: 34px; }
+.icon-btn.sm svg { width: 17px; height: 17px; }
+.note-warn { display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 12px 14px; border-radius: 14px; font-size: 13.5px; font-weight: 600; line-height: 1.4;
+  background: color-mix(in srgb, var(--warn) 13%, transparent); color: var(--ink); }
+.note-warn svg { width: 18px; height: 18px; flex: none; color: var(--warn); margin-top: 1px; }
+.age-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.age-chip { display: inline-flex; gap: 6px; align-items: baseline; padding: 6px 10px; border-radius: 10px; background: var(--surface-2); font-size: 12.5px; font-weight: 600; color: var(--ink-2); }
+.age-chip b { color: var(--ink); font-weight: 800; }
+.age-chip.muted b { color: var(--muted); }
+
+/* ---------- challenges: enrolment closed, richer empty states ---------- */
+.closed-sec { margin-top: 6px; }
+.closed-h { display: flex; align-items: center; gap: 8px; }
+.closed-h .ic { width: 20px; height: 20px; color: var(--bad); }
+.closed-h .h2 { margin: 0; }
+.cc.closed { background: color-mix(in srgb, var(--muted) 7%, var(--surface)); }
+.cc.closed .sp { filter: grayscale(.75); opacity: .75; }
+.cc.closed .cc-t { color: var(--ink-2); }
+.closed-pill { margin-left: auto; display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 99px; font-size: 12.5px; font-weight: 800;
+  background: color-mix(in srgb, var(--bad) 13%, transparent); color: var(--bad); white-space: nowrap; }
+.closed-pill .ic { width: 14px; height: 14px; }
+.empty-rich { gap: 10px; padding: 30px 20px 26px; }
+.empty-ic { width: 60px; height: 60px; border-radius: 20px; display: grid; place-items: center; margin-bottom: 4px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--brand) 16%, transparent), color-mix(in srgb, var(--good) 16%, transparent)); color: var(--brand); }
+.empty-ic svg { width: 30px; height: 30px; }
+.empty-rich .strong { font-size: 18px; }
+.empty-rich > .small { max-width: 34ch; }
+.empty-quote { margin: 4px 0 2px; max-width: 30ch; font-size: 14.5px; font-style: italic; font-weight: 600; color: var(--ink-2); text-wrap: balance; }
+.empty-rich .btn { margin-top: 4px; }

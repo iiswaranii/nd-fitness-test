@@ -1,5 +1,5 @@
 import { joinByText, regOpensText, fmtWindow } from '../../lib/dates';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Screen } from '../../components/Screen';
 import { PullToRefresh, RefreshButton } from '../../components/PullToRefresh';
@@ -19,13 +19,17 @@ import { saveCsv, saveXlsx } from '../../lib/exporter';
 import { audienceText, hasAudience } from '../../lib/audience';
 import type { Challenge, Participant } from '../../lib/types';
 import { Flag } from '../../components/Flag';
+import { useSession } from '../../lib/session';
+import { ageRangeText, baseOf, withBand } from '../../lib/agetargets';
+import { fmtAmount, fmtClock } from '../../lib/habits';
 
-type Row = { p: Participant; value: number; pct: number; done: boolean; onTrack: boolean; counted: number; km: number };
+type Row = { p: Participant; value: number; pct: number; done: boolean; onTrack: boolean; counted: number; km: number; target: number; daily: number | null };
 
 function rowsFor(c: Challenge, ps: Participant[]): Row[] {
   return ps.map((p) => {
-    const pr = progress({ ...c, joined: true }, p.activities, p.logs);
-    return { p, value: pr.value, pct: pr.pct, done: pr.done, onTrack: pr.onTrack, counted: c.category === 'activity' ? pr.counted.length : pr.metDays.length, km: pr.km };
+    const pc = withBand(c, p.band);
+    const pr = progress({ ...pc, joined: true }, p.activities, p.logs);
+    return { p, value: pr.value, pct: pr.pct, done: pr.done, onTrack: pr.onTrack, counted: c.category === 'activity' ? pr.counted.length : pr.metDays.length, km: pr.km, target: pc.target, daily: pc.daily_target };
   }).sort((a, b) => b.value - a.value);
 }
 
@@ -35,9 +39,9 @@ function exportRows(c: Challenge, rows: Row[]): (string | number | null)[][] {
   return [
     ['Challenge', 'Type', 'Goal', 'Daily rule', 'Start', 'End', 'Member', 'City', 'Strava', 'Progress', 'Target', 'Unit', 'Percent', 'Status', c.category === 'activity' ? 'Activities counted' : 'Days counted', 'Distance counted (km)'],
     ...rows.map((r) => [
-      c.title, c.category === 'activity' ? 'Physical exercise' : 'Healthy habit', goalText(c), h ? habitGoalText(h, c.daily_target ?? h.goal ?? 0) : '',
+      c.title, c.category === 'activity' ? 'Physical exercise' : 'Healthy habit', goalText(withBand(c, r.p.band)), h ? habitGoalText(h, r.daily ?? h.goal ?? 0) : '',
       c.start_date, c.end_date, r.p.name, r.p.city ?? '', c.category === 'activity' ? (r.p.strava_connected ? 'Linked' : 'No link yet') : '',
-      fmtValue(c, r.value), c.target, unitOf(c), Math.floor(r.pct),
+      fmtValue(c, r.value), r.target, unitOf(c), Math.floor(r.pct),
       r.done ? 'Completed' : st === 'finished' ? 'Not completed' : st === 'upcoming' ? 'Not started' : r.onTrack ? 'On track' : 'Behind',
       r.counted, c.category === 'activity' ? +r.km.toFixed(2) : '',
     ]),
@@ -50,7 +54,10 @@ export default function AdminChallenge() {
   const nav = useNavigate();
   const toast = useToast();
   const { allChallenges: challenges, reload } = useStore();
-  const c = challenges.find((x) => x.id === id);
+  const { user } = useSession();
+  const mine = challenges.find((x) => x.id === id);
+  // Admins see the challenge's normal target, not the one for their own age group.
+  const c = useMemo(() => (mine ? baseOf(mine) : undefined), [mine]);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [cancel, setCancel] = useState(false);
@@ -78,7 +85,18 @@ export default function AdminChallenge() {
           <h1 className="h1">{c.title}</h1>
           {hasAudience(c) ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="users" />Only for: {audienceText(c)}</span> : null}
           <p className="small muted">{goalText(c)} · {fmtWindow(c)} · registration {regOpensText(c)} – {joinByText(c)}</p>
+          {c.age_targets?.length ? (
+            <div className="age-list" aria-label="Targets by age">
+              {c.age_targets.map((t, i) => (
+                <span key={i} className="age-chip"><b>Age {ageRangeText(t)}</b>{c.category === 'habit' ? targetText(c, t.value) : `${t.value} ${unitOf(c)}`}</span>
+              ))}
+              <span className="age-chip muted"><b>Others</b>{c.category === 'habit' ? targetText(c, c.daily_target ?? 0) : `${c.target} ${unitOf(c)}`}</span>
+            </div>
+          ) : null}
         </div>
+        {st !== 'finished' && !c.cancelled ? (
+          <Button variant="secondary" onClick={() => nav(`/admin/c/${c.id}/edit`)}><Icon name="edit" />Edit challenge</Button>
+        ) : null}
 
         <div className="stat3">
           <div><div className="k">Members</div><div className="v">{c.member_count}</div></div>
@@ -98,7 +116,7 @@ export default function AdminChallenge() {
                     <tr key={r.p.user_id}>
                       <td className="n">{i + 1}</td>
                       <td><span className="strong">{r.p.name}</span><Flag country={r.p.country} />{r.p.city ? <span className="muted"> · {r.p.city}</span> : null}</td>
-                      <td className="n">{fmtValue(c, r.value)} / {c.target} {unitOf(c)}</td>
+                      <td className="n">{fmtValue(c, r.value)} / {r.target} {unitOf(c)}</td>
                       <td className="n">{Math.floor(r.pct)}%</td>
                       <td>
                         {c.category === 'activity' && !r.p.strava_connected ? <span className="pill warn">No Strava link yet</span>
@@ -119,24 +137,35 @@ export default function AdminChallenge() {
           <Button variant="secondary" disabled={!rows?.length} onClick={() => rows && saveCsv(`${slug(c)}.csv`, exportRows(c, rows)).then(() => toast('CSV ready')).catch((e) => toast((e as { code?: string })?.code === 'declined' ? 'Download cancelled' : friendlyError(e)))}><Icon name="download" />CSV</Button>
         </div>
 
-        {st === 'active' || st === 'upcoming' ? (
-          <Button variant="danger" onClick={() => setCancel(true)}>Cancel challenge</Button>
+        {(st === 'active' || st === 'upcoming') && !c.cancelled ? (
+          !c.created_by || c.created_by === user?.id
+            ? <Button variant="danger" onClick={() => setCancel(true)}><Icon name="trash" />Delete challenge</Button>
+            : <p className="small muted center-text">Only the admin who created this challenge can delete it. You can still edit it.</p>
         ) : null}
       </div>
       </PullToRefresh>
 
-      <Sheet open={cancel} onClose={() => setCancel(false)} label="Cancel challenge">
-        <h2 className="h1" style={{ fontSize: 24 }}>Cancel this challenge?</h2>
-        <p className="lead">Members will see it as cancelled and progress stops counting. This can’t be undone.</p>
+      <Sheet open={cancel} onClose={() => setCancel(false)} label="Delete challenge">
+        <h2 className="h1" style={{ fontSize: 24 }}>Delete this challenge?</h2>
+        <p className="lead">It disappears for members and progress stops counting. This can’t be undone.</p>
         <div className="stack tight">
           <Button variant="danger" loading={busy} onClick={async () => {
             setBusy(true);
-            try { await data.cancelChallenge(c.id); await reload(); setCancel(false); toast('Challenge cancelled'); }
+            try { await data.cancelChallenge(c.id); await reload(); setCancel(false); toast('Challenge deleted'); nav('/admin', { replace: true }); }
             catch (e) { toast(friendlyError(e)); } finally { setBusy(false); }
-          }}>Cancel challenge</Button>
+          }}>Delete challenge</Button>
           <Button variant="ghost" onClick={() => setCancel(false)}>Keep it</Button>
         </div>
       </Sheet>
     </Screen>
   );
+}
+
+/** "2,000 ml a day" / "by 10:30 pm" for a habit's daily target. */
+function targetText(c: Challenge, v: number): string {
+  const h = habitByKey(c.habit_key);
+  if (!h) return String(v);
+  if (h.kind === 'time') return `by ${fmtClock(v)}`;
+  if (h.kind === 'amount') return `${fmtAmount(v, h.unit)} a day`;
+  return 'daily';
 }

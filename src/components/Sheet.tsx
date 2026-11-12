@@ -29,7 +29,7 @@ export function Sheet({ open, onClose, children, label, dismissible = true }: {
       const atTop = (bodyRef.current?.scrollTop ?? 0) <= 0;
       if (!fromGrab && !atTop) return;
       if ((e.target as HTMLElement).closest('input, textarea, select')) return;
-      const inner = (e.target as HTMLElement).closest('.combo-list, .tbl');
+      const inner = (e.target as HTMLElement).closest('.combo-list, .tbl, .terms-box');
       if (inner && inner.scrollTop > 0) return;
       active = true; startY = e.touches[0].clientY; dy = 0; startT = Date.now();
     };

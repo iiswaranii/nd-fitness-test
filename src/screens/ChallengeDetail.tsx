@@ -20,6 +20,7 @@ import { useStore } from '../lib/store';
 import { data } from '../lib/data';
 import { lookOf } from '../lib/look';
 import { audienceText, hasAudience } from '../lib/audience';
+import { ageRangeText } from '../lib/agetargets';
 import { canJoin, challengeDays, dayText, fmtValue, goalText, progress, regOpen, status, unitOf } from '../lib/progress';
 import { addDays, fmtDay, fmtKm, fmtHms, longDay, parse, relDay, today } from '../lib/dates';
 import { dayMet, habitByKey, habitGoalText } from '../lib/habits';
@@ -69,6 +70,7 @@ export default function ChallengeDetail() {
           <p className="eyebrow">{look.kind}</p>
           <h1 className="h1">{c.title}</h1>
           {hasAudience(c) ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="users" />Specially for {audienceText(c)}</span> : null}
+          {c.my_band !== null && c.my_band !== undefined && c.age_targets?.[c.my_band] ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="user" />Goal set for your age group ({ageRangeText(c.age_targets[c.my_band])})</span> : null}
           {c.description ? <p className="lead">{c.description}</p> : null}
         </div>
 

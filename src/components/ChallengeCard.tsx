@@ -74,9 +74,10 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
   const look = lookOf(c);
   const st = status(c);
   const can = canJoin(c);
+  const closed = regOpen(c) && !can && c.eligible && st !== 'finished';
   return (
     // The whole card opens the details; the Join button only joins. (The title is the keyboard/screen-reader target.)
-    <div ref={ref} className={`card cc open ${isNew ? 'is-new' : ''}${openPath === `/c/${c.id}` ? ' sel' : ''}`} style={{ ['--c' as string]: look.color, cursor: 'pointer' }} onClick={() => nav(`/c/${c.id}`)}>
+    <div ref={ref} className={`card cc open ${isNew ? 'is-new' : ''}${closed ? ' closed' : ''}${openPath === `/c/${c.id}` ? ' sel' : ''}`} style={{ ['--c' as string]: look.color, cursor: 'pointer' }} onClick={() => nav(`/c/${c.id}`)}>
       <button className="cc-top" style={{ background: 'none', border: 0, padding: 0, textAlign: 'left', width: '100%' }} onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}>
         <span className="sp"><Icon name={look.icon} /></span>
         <span className="grow" style={{ minWidth: 0 }}>
@@ -91,14 +92,18 @@ export function OpenCard({ c, onJoin }: { c: Challenge; onJoin: (c: Challenge) =
       <div className="meta">
         <Icon name="users" className="ic" />
         <span className="strong" style={{ fontSize: 13.5 }}>{c.member_count ? `${c.member_count} joined` : 'Be the first to join'}</span>
-        <span className="muted" style={{ marginLeft: 'auto', fontWeight: 600 }}>
-          {!c.eligible ? 'View only' : can ? `Join by ${joinByText(c)}` : !regOpen(c) ? `Starts ${fmtDay(c.start_date)}` : 'Enrolment closed'}
-        </span>
+        {closed ? <span className="closed-pill"><Icon name="clock" className="ic" />Enrolment closed</span> : (
+          <span className="muted" style={{ marginLeft: 'auto', fontWeight: 600 }}>
+            {!c.eligible ? 'View only' : can ? `Join by ${joinByText(c)}` : `Starts ${fmtDay(c.start_date)}`}
+          </span>
+        )}
       </div>
       {!c.eligible ? (
         <button className="btn ghost" onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}><Icon name="eye" />View challenge</button>
       ) : can ? (
         <button className="btn tint" onClick={(e) => { e.stopPropagation(); markSeen(c.id); onJoin(c); }}><Icon name="plus" />Join challenge</button>
+      ) : closed ? (
+        <button className="btn ghost" onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}><Icon name="eye" />Follow along</button>
       ) : !regOpen(c) && st !== 'finished' ? (
         <button className="btn ghost" onClick={(e) => { e.stopPropagation(); nav(`/c/${c.id}`); }}><Icon name="cal" />Registration opens {regOpensText(c)}</button>
       ) : null}

@@ -95,6 +95,7 @@ export default function Activity() {
                 <li><span className="n">3</span><span>Come back, tap <span className="strong">Add a Strava activity</span> and paste.</span></li>
               </ol>
               <p className="small muted">It then counts toward every challenge you’ve joined for that sport and date.</p>
+              <p className="empty-quote" style={{ alignSelf: 'center', textAlign: 'center' }}>“Your first walk is waiting. Every kilometre counts.”</p>
             </div>
           )}
           <button className="link-btn" style={{ alignSelf: 'center' }} onClick={() => nav('/challenges')}>Go to challenges</button>

@@ -1,6 +1,7 @@
 import { TEST_INBOX } from '../../lib/config';
 import { useNavigate } from 'react-router-dom';
 import { Page } from '../../components/Page';
+import { EmptyState } from '../../components/EmptyState';
 import { Icon } from '../../components/Icon';
 import { StatusPill } from '../../components/ChallengeCard';
 import { PullToRefresh, RefreshButton } from '../../components/PullToRefresh';
@@ -71,7 +72,9 @@ export default function AdminHome() {
             );
           })}
           {!challenges.length ? (
-            <div className="card empty"><Icon name="trophy" /><p className="strong">No challenges yet</p><p className="small muted">Create the first one for your members.</p></div>
+            <EmptyState icon="plus" title="No challenges yet" text="Create the first one. Members see it straight away and get a notification." quote={false}>
+              <button className="btn" style={{ width: 'auto' }} onClick={() => nav('/admin/new')}><Icon name="plus" />Create a challenge</button>
+            </EmptyState>
           ) : null}
         </div>
       </PullToRefresh>
