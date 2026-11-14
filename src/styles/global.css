@@ -1002,3 +1002,18 @@ img, svg { -webkit-user-drag: none; user-drag: none; }
 .unit-seg { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
 @container (min-width: 600px) { .unit-seg { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .unit-seg button { font-size: 14px; }
+/* number + unit on one line (e.g. 100 | Kilometres ▾) */
+.amount-unit { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 8px; align-items: start; }
+.amount-unit > .field { margin: 0; }
+
+/* ---------- add activity: Strava link + screenshot / by hand ---------- */
+.add-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.add-row .btn { padding-left: 10px; padding-right: 10px; font-size: 15px; white-space: nowrap; }
+.opt-tile { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px; border-radius: 18px; border: 1.5px solid var(--line-strong); background: var(--surface); text-align: left; color: inherit; font: inherit; cursor: pointer; }
+.opt-tile .grow { min-width: 0; }
+.opt-tile > svg { width: 18px; height: 18px; color: var(--muted); flex: none; }
+.opt-tile:active { transform: scale(.98); }
+.shot-prev { max-height: 240px; max-width: 100%; border-radius: 16px; border: 1px solid var(--line); object-fit: contain; }
+.shot-found { display: flex; gap: 12px; align-items: center; padding: 10px; border-radius: 16px; background: var(--surface-2); }
+.shot-thumb { width: 56px; height: 72px; object-fit: cover; border-radius: 10px; flex: none; }
+.shot-found p { margin: 0; }

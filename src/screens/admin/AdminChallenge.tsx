@@ -1,6 +1,6 @@
 import { fmtNum } from '../../lib/units';
 import { joinByText, regOpensText, fmtWindow } from '../../lib/dates';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Screen } from '../../components/Screen';
 import { PullToRefresh, RefreshButton } from '../../components/PullToRefresh';
@@ -21,18 +21,15 @@ import { audienceText, hasAudience } from '../../lib/audience';
 import type { Challenge, Participant } from '../../lib/types';
 import { Flag } from '../../components/Flag';
 import { useSession } from '../../lib/session';
-import { ageRangeText, baseOf, mixedUnits, withBand } from '../../lib/agetargets';
-import { UNITS, unitKey } from '../../lib/units';
-import { fmtAmount, fmtClock } from '../../lib/habits';
 
 type Row = { p: Participant; value: number; pct: number; done: boolean; onTrack: boolean; counted: number; km: number; target: number; daily: number | null; pc: Challenge };
 
 function rowsFor(c: Challenge, ps: Participant[]): Row[] {
   return ps.map((p) => {
-    const pc = withBand(c, p.band);
-    const pr = progress({ ...pc, joined: true }, p.activities, p.logs);
+    const pc = c;
+    const pr = progress({ ...c, joined: true }, p.activities, p.logs);
     return { p, value: pr.value, pct: pr.pct, done: pr.done, onTrack: pr.onTrack, counted: c.category === 'activity' ? pr.counted.length : pr.metDays.length, km: pr.km, target: pc.target, daily: pc.daily_target, pc };
-  }).sort((a, b) => (mixedUnits(c) ? b.pct - a.pct : b.value - a.value));
+  }).sort((a, b) => b.value - a.value);
 }
 function exportRows(c: Challenge, rows: Row[]): (string | number | null)[][] {
   const h = habitByKey(c.habit_key);
@@ -40,7 +37,7 @@ function exportRows(c: Challenge, rows: Row[]): (string | number | null)[][] {
   return [
     ['Challenge', 'Type', 'Goal', 'Daily rule', 'Start', 'End', 'Member', 'City', 'Strava', 'Progress', 'Target', 'Unit', 'Percent', 'Status', c.category === 'activity' ? 'Activities counted' : 'Days counted', 'Distance counted (km)'],
     ...rows.map((r) => [
-      c.title, c.category === 'activity' ? 'Physical exercise' : 'Healthy habit', goalText(withBand(c, r.p.band)), h ? habitGoalText(h, r.daily ?? h.goal ?? 0) : '',
+      c.title, c.category === 'activity' ? 'Physical exercise' : 'Healthy habit', goalText(c), h ? habitGoalText(h, r.daily ?? h.goal ?? 0) : '',
       c.start_date, c.end_date, r.p.name, r.p.city ?? '', c.category === 'activity' ? (r.p.strava_connected ? 'Linked' : 'No link yet') : '',
       fmtValue(r.pc, r.value), r.target, unitOf(r.pc), Math.floor(r.pct),
       r.done ? 'Completed' : st === 'finished' ? 'Not completed' : st === 'upcoming' ? 'Not started' : r.onTrack ? 'On track' : 'Behind',
@@ -58,7 +55,7 @@ export default function AdminChallenge() {
   const { user } = useSession();
   const mine = challenges.find((x) => x.id === id);
   // Admins see the challenge's normal target, not the one for their own age group.
-  const c = useMemo(() => (mine ? baseOf(mine) : undefined), [mine]);
+  const c = mine;
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [cancel, setCancel] = useState(false);
@@ -86,14 +83,6 @@ export default function AdminChallenge() {
           <h1 className="h1">{c.title}</h1>
           {hasAudience(c) ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="users" />Only for: {audienceText(c)}</span> : null}
           <p className="small muted">{goalText(c)} · {fmtWindow(c)} · registration {regOpensText(c)} – {joinByText(c)}</p>
-          {c.age_targets?.length ? (
-            <div className="age-list" aria-label="Targets by age">
-              {c.age_targets.map((t, i) => (
-                <span key={i} className="age-chip"><b>Age {ageRangeText(t)}</b>{c.category === 'habit' ? targetText(c, t.value) : (c.metric === 'days' ? `${fmtNum(t.value)} ${UNITS[t.unit ?? unitKey(c)].short} a day` : `${fmtNum(t.value)} ${t.unit && c.metric === 'distance' ? UNITS[t.unit].short : unitOf(c)}`)}</span>
-              ))}
-              <span className="age-chip muted"><b>Others</b>{c.category === 'habit' ? targetText(c, c.daily_target ?? 0) : (c.metric === 'days' ? `${fmtNum(c.daily_min ?? 0)} ${UNITS[unitKey(c)].short} a day` : `${fmtNum(c.target)} ${unitOf(c)}`)}</span>
-            </div>
-          ) : null}
         </div>
         {st !== 'finished' && !c.cancelled ? (
           <Button variant="secondary" onClick={() => nav(`/admin/c/${c.id}/edit`)}><Icon name="edit" />Edit challenge</Button>
@@ -162,11 +151,3 @@ export default function AdminChallenge() {
   );
 }
 
-/** "2,000 ml a day" / "by 10:30 pm" for a habit's daily target. */
-function targetText(c: Challenge, v: number): string {
-  const h = habitByKey(c.habit_key);
-  if (!h) return String(v);
-  if (h.kind === 'time') return `by ${fmtClock(v)}`;
-  if (h.kind === 'amount') return `${fmtAmount(v, h.unit)} a day`;
-  return 'daily';
-}

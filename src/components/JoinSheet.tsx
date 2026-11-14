@@ -14,7 +14,6 @@ import { friendlyError } from '../lib/errors';
 import type { Challenge } from '../lib/types';
 import { enablePush, pushState } from '../lib/push';
 import { TERMS_VERSION, TermsStep } from './Terms';
-import { ageRangeText } from '../lib/agetargets';
 
 const KM_TARGETS = [0, 2, 3, 5, 8];
 
@@ -31,7 +30,6 @@ export function JoinSheet({ c, onClose, onJoined }: { c: Challenge | null; onClo
   if (!c) return null;
   const look = lookOf(c);
   const h = habitByKey(c.habit_key);
-  const band = c.my_band !== null && c.my_band !== undefined ? c.age_targets?.[c.my_band] : null;
   const join = async () => {
     setBusy(true); setErr(null);
     try {
@@ -61,7 +59,6 @@ export function JoinSheet({ c, onClose, onJoined }: { c: Challenge | null; onClo
           <p className="eyebrow">Join challenge</p>
           <h2 className="h1" style={{ fontSize: 26 }}>{c.title}</h2>
           <p className="lead">{goalText(c)} · {fmtWindow(c)}</p>
-          {band ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="user" />Goal set for your age group ({ageRangeText(band)})</span> : null}
         </div>
         {c.category === 'activity' ? (
           <div className="card stack tight">

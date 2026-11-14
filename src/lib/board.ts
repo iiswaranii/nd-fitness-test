@@ -3,7 +3,6 @@ import { fmtValue, progress, totalDays, unitOf } from './progress';
 import { amountOf } from './units';
 import { habitByKey, fmtAmount } from './habits';
 import { addDays, today } from './dates';
-import { mixedUnits, withBand } from './agetargets';
 
 /** Leaderboards only where "more" is genuinely better: all exercise challenges and selected habits (steps, push-ups, yoga minutes…). */
 export function hasBoard(c: Challenge): boolean {
@@ -16,21 +15,16 @@ export type BoardRow = { user_id: string; name: string; city: string | null; cou
 export function rankBoard(c: Challenge, ps: Participant[], meId: string | null): BoardRow[] {
   const h = habitByKey(c.habit_key);
   const t = today();
-  const mixed = mixedUnits(c);
   return ps.map((p) => {
-    // Each member against their own age group's target (the signed-in member's challenge is already theirs).
-    const pc = p.user_id === meId ? c : withBand(c, p.band);
-    const pr = progress({ ...pc, joined: true }, p.activities, p.logs);
+    const pr = progress({ ...c, joined: true }, p.activities, p.logs);
     let value = pr.value, label = '';
     if (c.category === 'activity') {
-      label = c.metric === 'distance' ? `${fmtValue(pc, value)} ${unitOf(pc)}` : c.metric === 'days' ? `${value} days` : `${value} ${c.sport === 'ride' ? 'rides' : c.sport === 'run' ? 'runs' : 'walks'}`;
+      label = c.metric === 'distance' ? `${fmtValue(c, value)} ${unitOf(c)}` : c.metric === 'days' ? `${value} days` : `${value} ${c.sport === 'ride' ? 'rides' : c.sport === 'run' ? 'runs' : 'walks'}`;
     } else {
       const end = c.end_date < t ? c.end_date : t;
       value = p.logs.filter((l) => l.challenge_id === c.id && l.date >= c.start_date && l.date <= end).reduce((s, l) => s + l.value, 0);
       label = fmtAmount(Math.round(value), h?.unit);
     }
-    // Age groups in different units (km vs steps): rank by how much of their own goal each member has done.
-    if (mixed) { label = `${label} · ${Math.floor(pr.pct)}%`; value = pr.pct; }
     const loggedToday = c.category === 'habit'
       ? p.logs.some((l) => l.challenge_id === c.id && l.date === t)
       : p.activities.some((a) => a.sport === c.sport && a.date === t);
@@ -47,7 +41,6 @@ export function nudge(c: Challenge, rows: BoardRow[]): string {
   if (me.value === 0) return 'Your first entry is the hardest one. Log today and you’re on the board!';
   if (i === 0) return 'You’re setting the pace for everyone. Keep that rhythm going!';
   const gap = rows[i - 1].value - me.value;
-  if (mixedUnits(c)) return `Just ${Math.max(1, Math.ceil(gap))}% more of your goal and you move up a spot. You’ve got this!`;
   if (c.category === 'activity' && c.metric === 'distance') return `Just ${fmtValue(c, gap)} ${unit} more and you move up a spot. One more walk could do it!`;
   if (c.category === 'activity') return `${Math.ceil(gap)} more to move up. You’re closer than you think!`;
   const h = habitByKey(c.habit_key);

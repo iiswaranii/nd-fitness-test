@@ -20,10 +20,10 @@ export const UNITS: Record<DistUnit, { name: string; short: string; long: string
 export const unitKey = (c: Pick<Challenge, 'unit'>): DistUnit => c.unit ?? 'km';
 
 /** How much one activity counts for, in the challenge's unit. */
-export function amountOf(c: Pick<Challenge, 'unit' | 'sport'>, a: Pick<Activity, 'km' | 'moving_s'>): number {
+export function amountOf(c: Pick<Challenge, 'unit' | 'sport'>, a: Pick<Activity, 'km' | 'moving_s' | 'steps'>): number {
   switch (unitKey(c)) {
     case 'mi': return a.km / 1.609344;
-    case 'steps': return a.km * (STEPS_PER_KM[c.sport ?? 'walk'] || STEPS_PER_KM.walk);
+    case 'steps': return a.steps ?? a.km * (STEPS_PER_KM[c.sport ?? 'walk'] || STEPS_PER_KM.walk);   // real steps when given
     case 'min': return (a.moving_s || 0) / 60;
     default: return a.km;
   }

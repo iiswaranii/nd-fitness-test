@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ageRangeText, baseOf, type AgeTarget } from '../../lib/agetargets';
 import type { Challenge } from '../../lib/types';
 import { DEFAULTS, STEPS_PER_KM, UNITS, fmtNum, type DistUnit } from '../../lib/units';
 import { Screen } from '../../components/Screen';
@@ -27,7 +26,6 @@ const HOURS = Array.from({ length: 24 }, (_, h) => `${String(h).padStart(2, '0')
 const START_TIMES = HOURS.map((v) => ({ value: v, label: clock12(v) }));
 const END_TIMES = [...HOURS.slice(1), '23:59'].map((v) => ({ value: v, label: clock12(v) }));
 
-type AgeRow = { min: string; max: string; value: string; unit?: DistUnit };
 
 /** New challenge, or (at /admin/c/:id/edit) edit an existing one. Any admin can edit any challenge. */
 export default function CreateChallenge() {
@@ -35,7 +33,7 @@ export default function CreateChallenge() {
   const { allChallenges } = useStore();
   const found = editId ? allChallenges.find((x) => x.id === editId) : undefined;
   if (editId && !found) return <Screen back><p className="muted">Challenge not found.</p></Screen>;
-  return <ChallengeForm key={editId ?? 'new'} orig={found ? baseOf(found) : undefined} />;
+  return <ChallengeForm key={editId ?? 'new'} orig={found} />;
 }
 
 function ChallengeForm({ orig }: { orig?: Challenge }) {
@@ -70,13 +68,6 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
   const [maxAge, setMaxAge] = useState(o?.aud_max_age?.toString() ?? '');
   const [countries, setCountries] = useState<string[]>(o?.aud_countries ?? []);
   const [states, setStates] = useState<string[]>(o?.aud_states ?? []);
-  // Age-wise targets — a different target for each age group the admin defines.
-  const [byAge, setByAge] = useState(!!o?.age_targets?.length);
-  const [ageRows, setAgeRows] = useState<AgeRow[]>(
-    o?.age_targets?.length
-      ? o.age_targets.map((a) => ({ min: a.min?.toString() ?? '', max: a.max?.toString() ?? '', value: o.category === 'habit' ? dailyText(oh, a.value) : String(a.value), unit: a.unit ?? o.unit ?? 'km' }))
-      : [{ min: '', max: '', value: '' }],
-  );
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const editing = !!o;
@@ -86,14 +77,8 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
     setUnit(u);
     if (metric === 'distance') setTarget(String(DEFAULTS[u].total));
     else setMinKm(String(DEFAULTS[u].perDay));
-    // Age groups that were following the main unit follow it to the new one.
-    setAgeRows((rs) => rs.map((r) => ((r.unit ?? unit) === unit ? { ...r, unit: u, value: '' } : r)));
   };
-  // Each age group can have its own unit on "Total" goals (e.g. 100 km for most, 10,000 steps for 60+).
-  const rowUnits = category === 'activity' && (metric === 'distance' || metric === 'days');
   const unitOptions = (Object.keys(UNITS) as DistUnit[]).filter((u) => sport !== 'ride' || UNITS[u].ride).map((u) => ({ value: u, label: UNITS[u].name }));
-  // Habits without a daily number (yes/no, weigh-in) can't have age-wise targets.
-  const ageAllowed = category === 'activity' || (!!habit && (habit.kind === 'time' || (habit.kind === 'amount' && habit.key !== 'weigh-in')));
 
   const days = Math.max(1, diffDays(start, end) + 1);
 
@@ -117,27 +102,8 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
       reg_opens_at: o && o.reg_opens === regOpens && o.reg_opens_at ? o.reg_opens_at : regOpens === today() ? new Date().toISOString() : localDayStartIso(regOpens),
       join_by_at: o && o.join_by === joinBy && o.join_by_at ? o.join_by_at : localDayEndIso(joinBy),
       sport: null, metric: null, daily_min: null, min_km: null, habit_key: null, daily_target: null,
-      aud_min_age: null, aud_max_age: null, aud_countries: null, aud_states: null, age_targets: null,
+      aud_min_age: null, aud_max_age: null, aud_countries: null, aud_states: null,
     } as NewChallenge;
-    if (byAge && ageAllowed) {
-      const out: AgeTarget[] = [];
-      for (const [i, r] of ageRows.entries()) {
-        const n = i + 1;
-        const lo = r.min.trim() ? parseInt(r.min, 10) : null, hi = r.max.trim() ? parseInt(r.max, 10) : null;
-        if (lo === null && hi === null) return `Age group ${n}: enter a “from” age, a “to” age, or both.`;
-        if ((lo !== null && (lo < 1 || lo > 120)) || (hi !== null && (hi < 1 || hi > 120))) return `Age group ${n}: ages should be between 1 and 120.`;
-        if (lo !== null && hi !== null && lo > hi) return `Age group ${n}: the “from” age must not be above the “to” age.`;
-        let v: number;
-        if (category === 'habit' && habit?.kind === 'time') { if (!r.value) return `Age group ${n}: set the target time.`; v = fromHHMM(r.value); }
-        else { v = parseFloat(r.value); if (!(v > 0)) return `Age group ${n}: set a target above zero.`; }
-        const clash = out.findIndex((x) => (x.min ?? 0) <= (hi ?? 999) && (lo ?? 0) <= (x.max ?? 999));
-        if (clash >= 0) return `Age groups ${clash + 1} and ${n} overlap. Each age should be in one group only.`;
-        const ru = rowUnits ? r.unit ?? unit : undefined;
-        if (ru === 'steps' && sport === 'ride') return `Age group ${n}: steps don’t work for cycling.`;
-        out.push(ru && ru !== unit ? { min: lo, max: hi, value: v, unit: ru } : { min: lo, max: hi, value: v });
-      }
-      base.age_targets = out;
-    }
     if (limit) {
       const lo = ageOn && minAge ? parseInt(minAge, 10) : null, hi = ageOn && maxAge ? parseInt(maxAge, 10) : null;
       if (lo !== null && (lo < 5 || lo > 110)) return 'Minimum age should be between 5 and 110.';
@@ -167,7 +133,7 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
     const r = build();
     return typeof r === 'string' ? null : r;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [category, title, desc, sport, metric, target, minKm, habit, daily, start, end, startTime, endTime, regOpens, joinBy, limit, ageOn, minAge, maxAge, countries, states, byAge, ageRows, unit]);
+  }, [category, title, desc, sport, metric, target, minKm, habit, daily, start, end, startTime, endTime, regOpens, joinBy, limit, ageOn, minAge, maxAge, countries, states, unit]);
 
   return (
     <Screen back>
@@ -226,25 +192,39 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
             <div className="field">
               <span className="label">Sport</span>
               <div className="seg">
-                {(Object.keys(SPORTS) as Sport[]).map((k) => <button type="button" key={k} aria-selected={sport === k} onClick={() => { setSport(k); if (k === 'ride') { if (unit === 'steps') pickUnit('km'); setAgeRows((rs) => rs.map((r) => (r.unit === 'steps' ? { ...r, unit: 'km', value: '' } : r))); } }}>{SPORTS[k].name}</button>)}
+                {(Object.keys(SPORTS) as Sport[]).map((k) => <button type="button" key={k} aria-selected={sport === k} onClick={() => { setSport(k); if (k === 'ride' && unit === 'steps') pickUnit('km'); }}>{SPORTS[k].name}</button>)}
               </div>
             </div>
             <div className="field">
               <span className="label">Goal</span>
               <div className="seg">
                 {([['distance', 'Total'], ['days', 'Active days'], ['count', 'Sessions']] as const).map(([k, l]) => (
-                  <button type="button" key={k} aria-selected={metric === k} onClick={() => { if (k !== metric) setAgeRows((rs) => rs.map((r) => ({ ...r, value: '' }))); setMetric(k); setTarget(k === 'distance' ? String(DEFAULTS[unit].total) : k === 'days' ? '15' : '10'); }}>{l}</button>
+                  <button type="button" key={k} aria-selected={metric === k} onClick={() => { setMetric(k); setTarget(k === 'distance' ? String(DEFAULTS[unit].total) : k === 'days' ? '15' : '10'); }}>{l}</button>
                 ))}
               </div>
             </div>
-            <Picker label="Measure in" title="Measure in" value={unit} options={unitOptions} search={false} onChange={(v) => pickUnit(v as DistUnit)} />
-            <p className="hint" style={{ marginTop: -8 }}>{unitHint(unit, sport)}</p>
-            <div className="grid2">
-              <TextField label={metric === 'distance' ? `Total ${uName.long}` : metric === 'days' ? 'Number of days' : 'Number of sessions'} type="number" inputMode="decimal" min="1" value={target} onChange={(e) => setTarget(e.target.value)} />
-              {metric !== 'distance' ? (
-                <TextField label={metric === 'days' ? `${uName.name} for a day to count` : `Min ${uName.long} per session`} type="number" inputMode="decimal" min="0" step="any" value={minKm} onChange={(e) => setMinKm(e.target.value)} />
-              ) : <span />}
-            </div>
+            {metric === 'distance' ? (
+              <div className="field">
+                <span className="label">Total target</span>
+                <div className="amount-unit">
+                  <input className="input" aria-label={`Total ${uName.long}`} type="number" inputMode="decimal" min="1" step="any" value={target} onChange={(e) => setTarget(e.target.value)} />
+                  <Picker title="Measure in" value={unit} options={unitOptions} search={false} onChange={(v) => pickUnit(v as DistUnit)} />
+                </div>
+                <p className="hint">{+target > 0 ? <><b>≈ {fmtNum(+(+target / days).toFixed(unit === 'km' || unit === 'mi' ? 1 : 0))} {uName.long} a day</b> over {days} days. </> : null}{unitHint(unit, sport)}</p>
+              </div>
+            ) : (
+              <>
+                <TextField label={metric === 'days' ? 'Number of active days' : 'Number of sessions'} type="number" inputMode="decimal" min="1" value={target} onChange={(e) => setTarget(e.target.value)} />
+                <div className="field">
+                  <span className="label">{metric === 'days' ? 'A day counts when they do at least' : 'Each session must be at least'}</span>
+                  <div className="amount-unit">
+                    <input className="input" aria-label={metric === 'days' ? `${uName.name} for a day to count` : `Min ${uName.long} per session`} type="number" inputMode="decimal" min="0" step="any" value={minKm} onChange={(e) => setMinKm(e.target.value)} />
+                    <Picker title="Measure in" value={unit} options={unitOptions} search={false} onChange={(v) => pickUnit(v as DistUnit)} />
+                  </div>
+                  <p className="hint">{unitHint(unit, sport)}</p>
+                </div>
+              </>
+            )}
           </>
         ) : (
           <>
@@ -268,50 +248,6 @@ function ChallengeForm({ orig }: { orig?: Challenge }) {
             <p className="hint">A day counts when the member reaches the daily goal. Progress is days completed out of all {days} days of the challenge.</p>
           </>
         )}
-        {ageAllowed ? (
-          <>
-            <label className="card row" style={{ gap: 12, padding: 14 }} htmlFor="byage-on">
-              <span className="grow" style={{ minWidth: 0 }}>
-                <span className="strong" style={{ display: 'block' }}>Different target by age</span>
-                <span className="small muted">{byAge ? 'Each member gets the target for their age group.' : 'Off: one target for everyone.'}</span>
-              </span>
-              <input id="byage-on" type="checkbox" className="sw" checked={byAge} onChange={(e) => setByAge(e.target.checked)} />
-            </label>
-            {byAge ? (
-              <div className="card stack age-rows">
-                {ageRows.map((r, i) => {
-                  const set = (k: keyof AgeRow, v: string) => setAgeRows((rs) => rs.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
-                  const valueLabel = category === 'habit'
-                    ? habit?.kind === 'time' ? 'Target time' : `Daily ${habit?.dir === 'atMost' ? 'limit' : 'target'} (${habit?.unit ?? ''})`
-                    : metric === 'distance' ? `Total ${uName.short}` : metric === 'days' ? 'Per active day' : 'Sessions';
-                  return (
-                    <div key={i} className="age-row">
-                      <div className="age-row-h">
-                        <span className="strong">Age group {i + 1}{r.min || r.max ? <span className="muted"> · {ageRangeText({ min: r.min ? +r.min : null, max: r.max ? +r.max : null })}</span> : null}</span>
-                        {ageRows.length > 1 ? <button type="button" className="icon-btn sm" aria-label={`Remove age group ${i + 1}`} onClick={() => setAgeRows((rs) => rs.filter((_, j) => j !== i))}><Icon name="trash" /></button> : null}
-                      </div>
-                      <div className="grid2">
-                        <TextField label="From age" type="number" inputMode="numeric" placeholder="Any" value={r.min} onChange={(e) => set('min', e.target.value)} />
-                        <TextField label="To age" type="number" inputMode="numeric" placeholder="Any" value={r.max} onChange={(e) => set('max', e.target.value)} />
-                        {category === 'habit' && habit?.kind === 'time'
-                          ? <TextField label={valueLabel} type="time" value={r.value} onChange={(e) => set('value', e.target.value)} />
-                          : <TextField label={rowUnits ? (metric === 'days' ? `${UNITS[r.unit ?? unit].name} a day` : `Total ${UNITS[r.unit ?? unit].long}`) : valueLabel}
-                            hint={rowUnits && metric === 'distance' && +r.value > 0 ? `≈ ${fmtNum(Math.round(+r.value / days))} a day over ${days} days` : undefined} type="number" inputMode="decimal" min="0" step={category === 'habit' ? habit?.step ?? 1 : 'any'} value={r.value} onChange={(e) => set('value', e.target.value)} />}
-                        {rowUnits ? <Picker label="Measure in" title={`Age group ${i + 1}: measure in`} value={r.unit ?? unit} options={unitOptions} search={false}
-                          onChange={(v) => setAgeRows((rs) => rs.map((x, j) => (j === i ? { ...x, unit: v as DistUnit, value: x.unit === v ? x.value : '' } : x)))} /> : null}
-                      </div>
-                    </div>
-                  );
-                })}
-                <button type="button" className="link-btn" style={{ alignSelf: 'flex-start' }} onClick={() => setAgeRows((rs) => [...rs, { min: '', max: '', value: '', unit }])}><Icon name="plus" className="ic" />Add age group</button>
-                {rowUnits ? [...new Set(ageRows.map((r) => r.unit ?? unit))].filter((u) => u !== unit).map((u) => <p key={u} className="hint" style={{ margin: 0 }}>{unitHint(u, sport)}</p>) : null}
-                {rowUnits && metric === 'distance' ? <p className="hint" style={{ margin: 0 }}><b>Total</b> means for the whole challenge. For a daily amount (like 10,000 steps a day), choose the <b>Active days</b> goal above.</p> : null}
-                {rowUnits && metric === 'days' ? <p className="hint" style={{ margin: 0 }}>Each group sets what counts as an active day. Everyone needs the same number of active days ({target || '–'}).</p> : null}
-                <p className="hint">Members whose age isn’t in any group, or who haven’t added their birthday, get the normal target above. Age is counted on the start date. Birthdays stay private.{rowUnits ? ' When groups use different units, the leaderboard ranks everyone by how much of their own goal they’ve done.' : ''}</p>
-              </div>
-            ) : null}
-          </>
-        ) : null}
         </section>
 
         <section className="form-sec">
@@ -417,7 +353,6 @@ function PreviewCard({ c }: { c: NewChallenge }) {
       </div>
       <p className="small" style={{ color: 'var(--ink-2)' }}>{goalText(full)}{h ? ` · ${habitGoalText(h, c.daily_target ?? h.goal ?? 0)}` : ''}</p>
       {hasAudience(c) ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="users" />Only for: {audienceText(c)}</span> : null}
-      {c.age_targets?.length ? <span className="aud-tag" style={{ alignSelf: 'flex-start' }}><Icon name="user" />Target by age: {c.age_targets.map((a) => `${ageRangeText(a)}${a.unit ? ` (${UNITS[a.unit].long})` : ''}`).join(', ')}</span> : null}
     </div>
   );
 }

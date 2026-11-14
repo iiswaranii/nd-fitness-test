@@ -20,8 +20,11 @@ export function friendlyError(err: unknown): string {
     return 'That took too long. Please try again.';
 
   // ---- server not updated yet for a new feature ----
-  if ((m.includes('age_targets') || m.includes("'unit'") || m.includes('terms_version')) && (m.includes('column') || e?.code === 'PGRST204'))
-    return 'The server isn’t ready for age-wise targets or steps/miles yet (a database update is pending). Save with one target in km for now, or try again after the update.';
+  if ((m.includes("'unit'") || m.includes('terms_version')) && (m.includes('column') || e?.code === 'PGRST204'))
+    return 'The server isn’t ready for steps/miles yet (a database update is pending). Save with one target in km for now, or try again after the update.';
+
+  if (m.includes('add_manual_activity') && (m.includes('could not find') || m.includes('function') || e?.code === 'PGRST202'))
+    return 'Adding activities without Strava isn’t switched on yet (a database update is pending). Please try again later.';
 
   // ---- sign-in and codes ----
   if (m.includes('invalid login credentials')) return 'That email and password don’t match. Please check and try again.';

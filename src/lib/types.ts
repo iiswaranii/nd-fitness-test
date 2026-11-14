@@ -1,4 +1,3 @@
-import type { AgeTarget } from './agetargets';
 import type { DistUnit } from './units';
 
 export type Sport = 'walk' | 'run' | 'ride';
@@ -38,19 +37,10 @@ export type Challenge = {
   aud_max_age: number | null;
   aud_countries: string[] | null;
   aud_states: string[] | null;
-  /** Optional age-wise targets (see agetargets.ts). */
-  age_targets?: AgeTarget[] | null;
   cancelled: boolean;
   created_at: string;
   /** The admin who created it (only they can delete it). */
   created_by?: string | null;
-  /** The normal target/daily target before this member's age group was applied. */
-  base_target?: number;
-  base_daily_target?: number | null;
-  base_unit?: DistUnit | null;
-  base_daily_min?: number | null;
-  /** This member's age group (index into age_targets), or null for the normal target. */
-  my_band?: number | null;
   /** joined-in fields */
   member_count: number;
   joined: boolean;
@@ -63,7 +53,7 @@ export type Challenge = {
   eligible: boolean;
 };
 
-export type NewChallenge = Omit<Challenge, 'id' | 'created_at' | 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'my_joined_at' | 'cancelled' | 'eligible' | 'created_by' | 'base_target' | 'base_daily_target' | 'base_unit' | 'base_daily_min' | 'my_band'>;
+export type NewChallenge = Omit<Challenge, 'id' | 'created_at' | 'member_count' | 'joined' | 'my_daily_target' | 'my_reminder' | 'my_joined_at' | 'cancelled' | 'eligible' | 'created_by'>;
 
 export type Activity = {
   id: string; // Strava activity id
@@ -75,7 +65,9 @@ export type Activity = {
   moving_s: number;
   elapsed_s: number;
   elev_m: number | null;
-  source: 'sync' | 'link' | 'manual';
+  source: 'sync' | 'link' | 'manual' | 'screenshot';
+  /** Steps, when the member gave them (added by hand or read from a screenshot). */
+  steps?: number | null;
   /** Set when the member removed it in the app. It still counts for challenges that had already finished. */
   removed_at?: string | null;
   /** The link the member pasted (test mode can't resolve short links). */
@@ -100,8 +92,6 @@ export type Participant = {
   joined_at: string;
   activities: Activity[];
   logs: HabitLog[];
-  /** Age group for age-wise targets (index into the challenge's age_targets), or null. */
-  band?: number | null;
 };
 
 

@@ -9,6 +9,7 @@ import { useToast } from '../components/Toast';
 import { data } from '../lib/data';
 import { friendlyError } from '../lib/errors';
 import { AddLinkSheet } from '../components/AddLinkSheet';
+import { ManualActivitySheet } from '../components/ManualActivitySheet';
 import { useStore } from '../lib/store';
 import { useSession } from '../lib/session';
 import { addDays, fmtDay, fmtDur, fmtHms, fmtKm, relDay, today } from '../lib/dates';
@@ -22,6 +23,7 @@ export default function Activity() {
   const nav = useNavigate();
   const toast = useToast();
   const [link, setLink] = useState(false);
+  const [manual, setManual] = useState(false);
   const [del, setDel] = useState<Act | null>(null);
   const [busy, setBusy] = useState(false);
   const [openWeek, setOpenWeek] = useState<string | null>(null);
@@ -42,7 +44,10 @@ export default function Activity() {
         <div className="stack">
           <div className="page-head"><div><p className="eyebrow">From Strava</p><h1 className="h1">Activity</h1></div><div className="head-actions"><button className="chip" onClick={() => nav('/stats')} aria-label="Your stats"><Icon name="pulse" />Stats</button><RefreshButton onRefresh={refresh} /></div></div>
 
-          <Button variant="strava" onClick={() => setLink(true)}><Icon name="link" />Add a Strava activity</Button>
+          <div className="add-row">
+            <Button variant="strava" onClick={() => setLink(true)}><Icon name="link" />Strava link</Button>
+            <Button variant="secondary" onClick={() => setManual(true)}><Icon name="camera" />Upload / Manual</Button>
+          </div>
           {profile?.strava_connected && profile.strava_athlete_name ? <p className="small muted" style={{ marginTop: -4, textAlign: 'center' }}>Linked to {profile.strava_athlete_name} on Strava</p> : null}
           {activities.length ? (
             <>
@@ -84,7 +89,7 @@ export default function Activity() {
                   </div>
                 </div>
               ) : null}
-              <p className="legal">Strava shares distance and time, not step counts. For a steps goal, join a “Daily steps” habit challenge.</p>
+              <p className="legal">Strava shares distance and time, not steps. To count your real steps, use Upload / Manual: a screenshot from your step counter, or type them in.</p>
             </>
           ) : (
             <div className="card stack tight">
@@ -94,13 +99,14 @@ export default function Activity() {
                 <li><span className="n">2</span><span>Open the activity and tap <span className="strong">Share → Copy link</span>.</span></li>
                 <li><span className="n">3</span><span>Come back, tap <span className="strong">Add a Strava activity</span> and paste.</span></li>
               </ol>
-              <p className="small muted">It then counts toward every challenge you’ve joined for that sport and date.</p>
+              <p className="small muted">It then counts toward every challenge you’ve joined for that sport and date. No Strava? Tap <span className="strong">Upload / Manual</span> to add a screenshot from any step counter, or type it in.</p>
               <p className="empty-quote" style={{ alignSelf: 'center', textAlign: 'center' }}>“Your first walk is waiting. Every kilometre counts.”</p>
             </div>
           )}
           <button className="link-btn" style={{ alignSelf: 'center' }} onClick={() => nav('/challenges')}>Go to challenges</button>
         </div>
       </PullToRefresh>
+      <ManualActivitySheet open={manual} onClose={() => setManual(false)} />
       <AddLinkSheet open={link} onClose={() => setLink(false)} />
       <Sheet open={!!del} onClose={() => setDel(null)} label="Activity">
         {del ? (
@@ -133,7 +139,7 @@ function ActRow({ a, onOpen, showDate }: { a: Act; onOpen: () => void; showDate?
         <span className="sp"><Icon name={SPORTS[a.sport].icon} /></span>
         <span className="grow">
           <span className="strong" style={{ display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.name}</span>
-          <span className="small muted">{showDate ? `${fmtDay(a.date)} · ` : ''}{SPORTS[a.sport].verb}{a.time !== '00:00' && !showDate ? ` · ${a.time}` : ''} · {fmtHms(a.moving_s)}</span>
+          <span className="small muted">{showDate ? `${fmtDay(a.date)} · ` : ''}{a.steps ? `${a.steps.toLocaleString('en-IN')} steps` : SPORTS[a.sport].verb}{a.source === 'manual' || a.source === 'screenshot' ? '' : a.time !== '00:00' && !showDate ? ` · ${a.time}` : ''}{a.moving_s ? ` · ${fmtHms(a.moving_s)}` : ''}</span>
         </span>
         <span className="rv">{fmtKm(a.km)}<small>km</small></span>
       </button>
