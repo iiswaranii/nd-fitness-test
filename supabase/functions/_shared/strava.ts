@@ -255,8 +255,29 @@ export function parseActivityPage(html: string): PagePreview | null {
   };
 }
 
-/** Extra public facts from the activity page's Next.js data: visibility, local start, type, athlete. */
-export type PageFacts = { visibility: string | null; startLocal: string | null; sportType: string | null; name: string | null; athleteName: string | null };
+/**
+ * Extra public facts from the activity page's Next.js data: visibility, local start, type, athlete — and, when
+ * the page carries them, the athlete's id and the activity's own numbers (distance, moving/elapsed time, steps).
+ * Strava renames fields from time to time, so the numbers are looked for by name anywhere inside the activity.
+ */
+export type PageFacts = {
+  visibility: string | null; startLocal: string | null; sportType: string | null; name: string | null; athleteName: string | null;
+  athleteId: string | null; distanceM: number | null; movingS: number | null; elapsedS: number | null; steps: number | null;
+};
+
+/** First numeric value found under any key matching `key` (depth-first, limited depth). */
+function findNum(o: unknown, key: RegExp, depth = 0): number | null {
+  if (!o || typeof o !== 'object' || depth > 5) return null;
+  for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+    if (key.test(k)) {
+      if (typeof v === 'number' && Number.isFinite(v)) return v;
+      if (typeof v === 'string' && /^\d+(\.\d+)?$/.test(v)) return Number(v);
+      if (v && typeof v === 'object') { const n = (v as Record<string, unknown>).value ?? (v as Record<string, unknown>).raw; if (typeof n === 'number') return n; }
+    }
+  }
+  for (const v of Object.values(o as Record<string, unknown>)) { const r = findNum(v, key, depth + 1); if (r !== null) return r; }
+  return null;
+}
 
 export function parsePageFacts(html: string): PageFacts | null {
   const m = html.match(/<script[^>]*id=["']__NEXT_DATA__["'][^>]*>([\s\S]*?)<\/script>/i);
@@ -265,15 +286,29 @@ export function parsePageFacts(html: string): PageFacts | null {
     const a = JSON.parse(m[1])?.props?.pageProps?.activity;
     if (!a) return null;
     const ath = a.athlete ? [a.athlete.firstName, a.athlete.lastName].filter(Boolean).join(' ').trim() : '';
+    const aid = a.athlete?.id ?? a.athleteId ?? a.athlete?.athleteId ?? null;
+    const dist = findNum(a, /^(distance|distanceInMeters|distance_m)$/i);
+    const moving = findNum(a, /^(movingTime|moving_time|movingTimeInSeconds)$/i);
+    const elapsed = findNum(a, /^(elapsedTime|elapsed_time|elapsedTimeInSeconds)$/i);
+    const steps = findNum(a, /^(steps|stepCount|totalSteps)$/i);
     return {
       visibility: a.visibility ?? null,
       startLocal: typeof a.startLocal === 'string' ? a.startLocal : null,
       sportType: a.activityKind?.sportType ?? null,
       name: a.name ?? null,
       athleteName: ath || null,
+      athleteId: aid != null && /^\d+$/.test(String(aid)) ? String(aid) : null,
+      distanceM: dist !== null && dist > 0 ? dist : null,
+      movingS: moving !== null && moving > 0 ? moving : null,
+      elapsedS: elapsed !== null && elapsed > 0 ? elapsed : null,
+      steps: steps !== null && steps > 0 ? Math.round(steps) : null,
     };
   } catch { return null; }
 }
+
+/** Same person? Compares names the way Strava shows them ("Arvinder Singh Rooprai"), ignoring case and spacing. */
+export const sameName = (a: string | null | undefined, b: string | null | undefined) =>
+  !!a && !!b && a.trim().toLowerCase().replace(/\s+/g, ' ') === b.trim().toLowerCase().replace(/\s+/g, ' ');
 
 /**
  * Strava Labs "Flyby" (nene.strava.com) still serves the GPS track of public activities without a login.

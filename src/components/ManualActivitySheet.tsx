@@ -54,6 +54,7 @@ export function ManualActivitySheet({ open, onClose, start = 'choose' }: { open:
       const g = await readScreenshot(f, setProgress);
       const got: string[] = [];
       if (g.sport) setSport(g.sport);
+      if (g.date && g.date <= today() && g.date >= addDays(today(), -6)) { setDate(g.date); got.push(g.date === today() ? 'today' : fmtDay(g.date)); }
       if (g.steps !== null && g.sport !== 'ride') { setSteps(String(g.steps)); got.push(`${g.steps.toLocaleString('en-IN')} steps`); }
       if (g.km !== null) { setKm(String(g.km)); got.push(`${g.km} km`); }
       if (g.minutes !== null) { setHh(String(Math.floor(g.minutes / 60) || '')); setMm(String(g.minutes % 60)); got.push(`${g.minutes} min`); }
@@ -97,7 +98,7 @@ export function ManualActivitySheet({ open, onClose, start = 'choose' }: { open:
           </div>
           <button className="opt-tile" onClick={() => fileRef.current?.click()}>
             <span className="sp" style={{ ['--c' as string]: 'var(--ride)' }}><Icon name="camera" /></span>
-            <span className="grow"><span className="strong" style={{ display: 'block' }}>Upload a screenshot</span><span className="small muted">From Google Fit, Samsung Health, Apple Health or any step counter. We read the steps, distance and time for you.</span></span>
+            <span className="grow"><span className="strong" style={{ display: 'block' }}>Upload a screenshot</span><span className="small muted">From any fitness app or watch: Strava, Google Fit, Samsung Health, Apple Health, Zepp / Amazfit, Mi Fitness, Fitbit, Noise… We read the steps, distance, time and day for you.</span></span>
             <Icon name="chev" />
           </button>
           <button className="opt-tile" onClick={() => { setSource('manual'); setStep('form'); }}>

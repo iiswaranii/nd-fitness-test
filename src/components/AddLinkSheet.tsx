@@ -1,3 +1,4 @@
+import { ManualActivitySheet } from './ManualActivitySheet';
 import { celebrate } from '../lib/celebrate';
 import { useState } from 'react';
 import { Sheet } from './Sheet';
@@ -17,6 +18,7 @@ import { SPORTS, type Challenge, type Sport } from '../lib/types';
  * Strava's public page gives the name, type and date; the member types distance and time from Strava.
  */
 export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; onClose: () => void; forChallenge?: Challenge | null }) {
+  const [manualOpen, setManualOpen] = useState(false);
   const { reload } = useStore();
   const { profile, refreshProfile } = useSession();
   const toast = useToast();
@@ -90,6 +92,7 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
   };
 
   return (
+    <>
     <Sheet open={open} onClose={close} label="Add a Strava activity">
       <span className="sp lg" style={{ ['--c' as string]: 'var(--strava)' }}><Icon name="link" /></span>
       {!linked ? <StravaProfileLink /> : <>
@@ -112,6 +115,7 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
               </div>
             </div>
             <ErrorText>{err}</ErrorText>
+          {err ? <button type="button" className="link-btn" style={{ alignSelf: 'center' }} onClick={() => { close(); setManualOpen(true); }}><Icon name="camera" className="ic" />Add it with a screenshot or by hand instead</button> : null}
             <Button type="submit" variant="strava" loading={busy} disabled={!url.trim()}>{busy ? 'Reading activity…' : 'Continue'}</Button>
             <p className="legal">
               {athlete ? <>Activities by <span className="strong">{athlete}</span> on Strava count for you.</>
@@ -138,6 +142,7 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
           ) : null}
           <p className="small muted">Exactly as recorded in Strava. To change anything, edit the activity in Strava first, then paste the link again.</p>
           <ErrorText>{err}</ErrorText>
+          {err ? <button type="button" className="link-btn" style={{ alignSelf: 'center' }} onClick={() => { close(); setManualOpen(true); }}><Icon name="camera" className="ic" />Add it with a screenshot or by hand instead</button> : null}
           <Button variant="strava" loading={busy} onClick={confirmOfficial}>Submit</Button>
           <Button type="button" variant="ghost" onClick={() => { setPreview(null); setErr(null); }}>Back</Button>
         </div>
@@ -201,12 +206,15 @@ export function AddLinkSheet({ open, onClose, forChallenge }: { open: boolean; o
           </div>
 
           <ErrorText>{err}</ErrorText>
+          {err ? <button type="button" className="link-btn" style={{ alignSelf: 'center' }} onClick={() => { close(); setManualOpen(true); }}><Icon name="camera" className="ic" />Add it with a screenshot or by hand instead</button> : null}
           <Button type="submit" variant="strava" loading={busy}>Save activity</Button>
           <Button type="button" variant="ghost" onClick={() => { setPreview(null); setErr(null); }}>Back</Button>
         </form>
       )}
       </>}
     </Sheet>
+    <ManualActivitySheet open={manualOpen} onClose={() => setManualOpen(false)} />
+    </>
   );
 }
 

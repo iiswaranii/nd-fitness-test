@@ -9,7 +9,7 @@
 // is accepted only when Strava says it was recorded by that same athlete id. Each activity once, each athlete
 // linked to one member.
 import { admin, cors, json, requireUser } from '../_shared/common.ts';
-import { athleteNameFromPage, BROWSER_UA, embedUrl, resolveLink, FLYBY_HEADERS, flybyMatchesUrl, flybyUrl, parseActivityPage, summaryFromFlyby, parseEmbed, parsePageFacts, resolveShortLink, sportOf, statsFromFlyby, type Sport } from '../_shared/strava.ts';
+import { athleteNameFromPage, BROWSER_UA, embedUrl, resolveLink, FLYBY_HEADERS, flybyMatchesUrl, flybyUrl, parseActivityPage, summaryFromFlyby, parseEmbed, parsePageFacts, resolveShortLink, sameName, sportOf, statsFromFlyby, type Sport } from '../_shared/strava.ts';
 
 const NOT_FOUND = 'We couldn’t open this activity. Check that the link is right and the activity isn’t set to “Only you” in Strava.';
 
@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
     let sport: Sport | null = null, sportType: string | null = null, date: string | null = null, time: string | null = null;
     let title: string | null = null, athleteName: string | null = null, athleteId: string | null = null;
     let distanceM: number | null = null, seconds: number | null = null, elapsed: number | null = null, elevM: number | null = null;
-    let startUtc: string | null = null;
+    let startUtc: string | null = null, steps: number | null = null, ownerChecked = false;
 
     // ---- 2a. pasted Embed code (has a token) → Strava's own numbers ----
     const ep = token ? await fetch(embedUrl(id, token), { headers }).then((r) => (r.ok ? r.text() : null)).then((h) => (h ? parseEmbed(h, today) : null)).catch(() => null) : null;
@@ -73,44 +73,58 @@ Deno.serve(async (req) => {
       const html = pr?.ok ? await pr.text() : '';
       const pp = html ? parseActivityPage(html) : null;
       const facts = html ? parsePageFacts(html) : null;
-      if (!pp && !facts) return json({ error: NOT_FOUND }, 404);
+      if (!pp && !facts) return json({ error: NOT_FOUND, canUseManual: true }, 404);
       if (facts?.visibility && facts.visibility !== 'Everyone') {
-        return json({ error: 'This activity isn’t public. In Strava, open it → ⋯ → Edit → Who can view → Everyone, then paste the link again.' }, 403);
+        return json({ error: 'This activity isn’t public, so Strava won’t share it. In Strava, open it → ⋯ → Edit → Who can view → Everyone, then paste the link again. Or add it with a screenshot instead.', canUseManual: true }, 403);
       }
       sportType = facts?.sportType ?? pp?.sportType ?? null;
       sport = sportOf(sportType);
       title = facts?.name ?? pp?.title ?? null;
       athleteName = facts?.athleteName ?? pp?.athleteName ?? null;
-      athleteId = pp?.athleteId ?? null;
+      athleteId = facts?.athleteId ?? pp?.athleteId ?? null;
       if (facts?.startLocal && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(facts.startLocal)) {
         date = facts.startLocal.slice(0, 10); time = facts.startLocal.slice(11, 19).padEnd(8, ':00').slice(0, 8);
       } else date = pp?.date ?? null;
-      if (!sportType) return json({ error: NOT_FOUND }, 404);
+      if (!sportType) return json({ error: NOT_FOUND, canUseManual: true }, 404);
       if (!sport) return json({ error: `This is a ${sportType} activity. Only walks, hikes, runs and rides count.` }, 400);
 
       const m = body.manual;
-      const summary = async () => {
+      const flyby = async () => {
         const mr = await fetch(flybyMatchesUrl(id!), { headers: { 'User-Agent': BROWSER_UA, ...FLYBY_HEADERS } }).catch(() => null);
         return mr?.ok ? summaryFromFlyby(await mr.json().catch(() => null), id!) : null;
       };
+      // Strava's own numbers for this activity, from the first source that has them:
+      //  1. Strava Labs Flyby (missing when the athlete turned Flyby off in their privacy settings),
+      //  2. Strava's public embed card (same as Share → Embed, works for any activity visible to Everyone),
+      //  3. the public activity page's own data.
+      type Official = { distanceM: number; seconds: number; elapsedS: number | null; startUtc: string | null; athleteId: string | null; steps: number | null };
+      const official = async (): Promise<Official | null> => {
+        const f = await flyby();
+        if (f && f.elapsedS) return { distanceM: f.distanceM, seconds: f.elapsedS, elapsedS: f.elapsedS, startUtc: f.startUtc ? new Date(f.startUtc * 1000).toISOString().replace('.000Z', 'Z') : null, athleteId: f.athleteId ?? facts?.athleteId ?? null, steps: facts?.steps ?? null };
+        const e = await fetch(embedUrl(id!), { headers }).then((r) => (r.ok ? r.text() : null)).then((h) => (h ? parseEmbed(h, today) : null)).catch(() => null);
+        if (e && e.distanceM && e.seconds) return { distanceM: e.distanceM, seconds: e.seconds, elapsedS: null, startUtc: null, athleteId: e.athleteId ?? f?.athleteId ?? facts?.athleteId ?? null, steps: facts?.steps ?? null };
+        if (facts?.distanceM && (facts.movingS || facts.elapsedS)) return { distanceM: facts.distanceM, seconds: (facts.movingS ?? facts.elapsedS)!, elapsedS: facts.elapsedS, startUtc: null, athleteId: facts.athleteId ?? f?.athleteId ?? null, steps: facts.steps };
+        return null;
+      };
+      // Who recorded it: Strava's athlete id when any source shows it; otherwise the name on the activity must
+      // match the member's linked Strava profile name exactly.
+      const ownerOk = (aid: string | null) => (aid ? aid === myAid : sameName(athleteName, me?.strava_athlete_name));
+      const ownerKnown = (aid: string | null) => !!aid || sameName(athleteName, me?.strava_athlete_name);
       if (body.confirm === true) {
         // ---- 3. save Strava's own numbers, exactly (fetched again here, never taken from the app) ----
-        const sum = await summary();
-        if (!sum) return json({ error: 'We couldn’t read this activity from Strava just now. Please try again.' }, 502);
-        distanceM = sum.distanceM; seconds = sum.elapsedS ?? 0; elapsed = sum.elapsedS;
-        athleteId = sum.athleteId ?? athleteId;
-        if (sum.startUtc) startUtc = new Date(sum.startUtc * 1000).toISOString().replace('.000Z', 'Z');
-        if (!(seconds > 0)) return json({ error: 'Strava didn’t share this activity’s time. Please try again.' }, 502);
+        const o = await official();
+        if (!o) return json({ error: 'We couldn’t read this activity from Strava just now. Please try again.' }, 502);
+        distanceM = o.distanceM; seconds = o.seconds; elapsed = o.elapsedS ?? o.seconds; startUtc = o.startUtc; steps = o.steps;
+        athleteId = o.athleteId ?? athleteId;
       } else if (!m) {
-        // ---- 2c. Strava's own summary via Strava Labs Flyby (distance, elapsed time, athlete id) ----
-        // Nothing is saved yet: the member checks (and can correct) the numbers first.
-        const sum = await summary();
-        if (sum?.athleteId && sum.athleteId !== myAid) return notMine(athleteName);
-        if (sum) {
-          if (sum.activityType && !sportType) { sportType = sum.activityType; sport = sportOf(sportType); }
+        // ---- 2c. Strava's own numbers. Nothing is saved yet: the member checks them first. ----
+        const o = await official();
+        const aid = o?.athleteId ?? athleteId;
+        if (aid && aid !== myAid) return notMine(athleteName);
+        if (o) {
           return json({ needsStats: true, preview: {
-            id, title: title ?? sum.name, sportType, sport, date, time, athleteName,
-            km: sum.distanceM / 1000, seconds: sum.elapsedS, measured: true, partial: false, official: true,
+            id, title, sportType, sport, date, time, athleteName,
+            km: o.distanceM / 1000, seconds: o.seconds, steps: o.steps, measured: true, partial: false, official: true,
           } });
         }
         // ---- 2d. fallback: measure the public GPS track (misses parts hidden by a privacy zone) ----
@@ -129,8 +143,8 @@ Deno.serve(async (req) => {
           measured: ok, partial,
         } });
       } else {
-        // ---- 3b. no Strava numbers available (no GPS, or Strava Labs down): the member typed them ----
-        if (!athleteId) athleteId = (await summary())?.athleteId ?? null;
+        // ---- 3b. no Strava numbers available: the member typed them ----
+        if (!athleteId) athleteId = (await flyby())?.athleteId ?? facts?.athleteId ?? null;
         const km = Number(m.km), secs = Number(m.seconds);
         const ms = typeof m.sport === 'string' && ['walk', 'run', 'ride'].includes(m.sport) ? m.sport as Sport : null;
         if (ms) sport = ms;
@@ -140,18 +154,22 @@ Deno.serve(async (req) => {
         distanceM = km * 1000; seconds = Math.round(secs);
         source = 'manual';
       }
+      // ---- ownership ----
+      if (!ownerKnown(athleteId)) return json({ error: 'We couldn’t confirm on Strava who recorded this activity. Make sure your Strava profile is linked (Activity → Strava link → profile), or add it with Upload / Manual instead.', canUseManual: true }, 403);
+      if (!ownerOk(athleteId)) return notMine(athleteName);
+      ownerChecked = true;
     }
     if (!date) date = today;
 
     if (!sport) return json({ error: `This is a ${sportType ?? 'different'} activity. Only walks, hikes, runs and rides count.` }, 400);
 
-    // ---- ownership: Strava's athlete id for this activity must be the member's linked profile ----
-    if (!athleteId) athleteId = (await (async () => {
+    // ---- ownership (embed-code path): Strava's athlete id for this activity must be the member's linked profile ----
+    if (!ownerChecked && !athleteId) athleteId = (await (async () => {
       const mr = await fetch(flybyMatchesUrl(id!), { headers: { 'User-Agent': BROWSER_UA, ...FLYBY_HEADERS } }).catch(() => null);
       return mr?.ok ? summaryFromFlyby(await mr.json().catch(() => null), id!) : null;
     })())?.athleteId ?? null;
-    if (!athleteId) return json({ error: 'We couldn’t confirm on Strava who recorded this activity. Please try again in a little while.' }, 503);
-    if (athleteId !== myAid) return notMine(athleteName);
+    if (!ownerChecked && !athleteId) return json({ error: 'We couldn’t confirm on Strava who recorded this activity. Please try again in a little while, or add it with Upload / Manual.', canUseManual: true }, 503);
+    if (!ownerChecked && athleteId !== myAid) return notMine(athleteName);
     const firstLink = false;
 
     const row = {
@@ -169,9 +187,11 @@ Deno.serve(async (req) => {
       source,
       synced_at: new Date().toISOString(),
     };
-    const { error } = restoring
-      ? await db.from('activities').update({ ...row, removed_at: null }).eq('id', id).eq('user_id', user.id)
-      : await db.from('activities').insert(row);
+    const write = (r: Record<string, unknown>) => restoring
+      ? db.from('activities').update({ ...r, removed_at: null }).eq('id', id).eq('user_id', user.id)
+      : db.from('activities').insert(r);
+    let { error } = await write(steps ? { ...row, steps } : row);
+    if (error && steps && /steps/.test(error.message ?? '')) ({ error } = await write(row)); // before the steps column exists
     if (error) throw error;
     return json({ activity: row, athleteName: athleteName ?? me?.strava_athlete_name ?? 'Strava athlete', firstLink });
   } catch (e) {
